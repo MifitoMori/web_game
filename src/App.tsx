@@ -1,35 +1,53 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import AuthLayout from '@layouts/AuthLayout';
+import MainLayout from '@layouts/MainLayout';
+import GameLayout from '@layouts/GameLayout';
+import ProtectedRoute from '@components/common/ProtectedRoute/ProtectedRoute';
+
+// Страницы авторизации
+import LoginPage from '@pages/auth/LoginPage';
+
+// Основные страницы
+import LobbyPage from '@pages/lobby/LobbyPage';
+import ProfilePage from '@pages/profile/ProfilePage';
+import ShopPage from '@pages/shop/ShopPage';
+import LeaderboardPage from '@pages/leaderboard/LeaderboardPage';
+import SettingsPage from '@pages/settings/SettingsPage';
+import GamePage from '@pages/game/GamePage';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <BrowserRouter>
+      <Routes>
+        {/* Публичные маршруты (без авторизации) */}
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+        </Route>
+
+        {/* Защищенные маршруты (требуется авторизация) */}
+        <Route element={<ProtectedRoute />}>
+          {/* Основной макет с навигацией */}
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Navigate to="/lobby" replace />} />
+            <Route path="/lobby" element={<LobbyPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/shop" element={<ShopPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Route>
+
+          {/* Специальный макет для игры */}
+          <Route element={<GameLayout />}>
+            <Route path="/game" element={<GamePage />} />
+          </Route>
+        </Route>
+
+        {/* 404 - Страница не найдена */}
+        <Route path="*" element={<Navigate to="/lobby" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

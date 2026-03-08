@@ -15,6 +15,10 @@ export default defineConfig({
       '@types': path.resolve(__dirname, './src/types'),
       '@assets': path.resolve(__dirname, './src/assets'),
       '@styles': path.resolve(__dirname, './src/styles'),
+      '@layouts': path.resolve(__dirname, './src/layouts'),
+      '@services': path.resolve(__dirname, './src/services'),
+      '@store': path.resolve(__dirname, './src/store'),
+      '@constants': path.resolve(__dirname, './src/constants'),
     },
   },
   server: {
