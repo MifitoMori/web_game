@@ -1,0 +1,26 @@
+.playerCard {
+  padding: var(--mantine-spacing-lg);
+  background: light-dark(
+    var(--mantine-color-white),
+    var(--mantine-color-dark-7)
+  );
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.playerCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--mantine-shadow-lg);
+}
+
+.avatarWrapper {
+  position: relative;
+}
+
+.levelBadge {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  border-radius: var(--mantine-radius-xl);
+  min-width: 48px;
+  pointer-events: none;
+}

@@ -1,0 +1,35 @@
+.lobbyContainer {
+  min-height: calc(100vh - 60px);
+  background: light-dark(
+    var(--mantine-color-gray-0),
+    var(--mantine-color-dark-8)
+  );
+}
+
+.quickActions {
+  background: light-dark(
+    var(--mantine-color-white),
+    var(--mantine-color-dark-7)
+  );
+}
+
+.gameModes {
+  background: light-dark(
+    var(--mantine-color-white),
+    var(--mantine-color-dark-7)
+  );
+}
+
+.modeCard {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  background: light-dark(
+    var(--mantine-color-white),
+    var(--mantine-color-dark-6)
+  );
+}
+
+.modeCard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--mantine-shadow-lg);
+}

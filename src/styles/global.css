@@ -1,0 +1,10 @@
+/* Ваши существующие стили + добавьте: */
+
+.mode-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mode-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
