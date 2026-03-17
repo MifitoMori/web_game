@@ -8,8 +8,11 @@ import MainLayout from '@layouts/MainLayout';
 import GameLayout from '@layouts/GameLayout';
 import ProtectedRoute from '@components/common/ProtectedRoute/ProtectedRoute';
 
-// Страницы
+// Регистрация
 import LoginPage from '@pages/auth/LoginPage';
+import RegisterPage from '@pages/auth/RegisterPage';
+
+//Основные страницы
 import LobbyPage from '@pages/lobby/LobbyPage';
 import ProfilePage from '@pages/profile/ProfilePage';
 import ShopPage from '@pages/shop/ShopPage';
@@ -30,6 +33,7 @@ function App() {
           <Routes>
             <Route element={<AuthLayout />}>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
             </Route>
 
             <Route element={<ProtectedRoute />}>

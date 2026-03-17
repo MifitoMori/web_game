@@ -1,23 +1,20 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
-  Container,
-  Paper,
-  Title,
-  Text,
   TextInput,
   PasswordInput,
   Button,
   Stack,
+  Text,
+  Anchor,
   Divider,
   Group,
   Box,
-  ThemeIcon,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { IconBrandGoogle, IconBrandGithub, IconLock, IconMail } from '@tabler/icons-react';
+import { IconMail, IconLock, IconBrandGoogle, IconBrandGithub } from '@tabler/icons-react';
 import { useAuth } from '@hooks/useAuth';
+import classes from './AuthPage.module.css';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -39,80 +36,67 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     try {
       await login(values.email, values.password);
-      notifications.show({
-        title: 'Успешно!',
-        message: 'Вы вошли в систему',
-        color: 'green',
-      });
       navigate('/lobby');
     } catch (error) {
-      notifications.show({
-        title: 'Ошибка',
-        message: 'Неверный email или пароль',
-        color: 'red',
-      });
+      // Ошибка уже обработана в хуке
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Container size="xs" py="xl">
-      <Paper radius="md" p="xl" withBorder>
-        <Box ta="center" mb="md">
-          <ThemeIcon size="xl" radius="xl" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
-            <IconLock size={24} />
-          </ThemeIcon>
-          <Title order={2} mt="md">
-            Добро пожаловать!
-          </Title>
-          <Text c="dimmed" size="sm">
-            Войдите в свой аккаунт чтобы продолжить
-          </Text>
-        </Box>
+    <Box>
+      <Text size="xl" fw={700} ta="center" mb="lg">
+        Добро пожаловать!
+      </Text>
+      
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack>
+          <TextInput
+            required
+            label="Email"
+            placeholder="your@email.com"
+            leftSection={<IconMail size={16} />}
+            {...form.getInputProps('email')}
+          />
 
-        <form onSubmit={form.onSubmit(handleSubmit)}>
-          <Stack>
-            <TextInput
-              required
-              label="Email"
-              placeholder="your@email.com"
-              leftSection={<IconMail size={16} />}
-              {...form.getInputProps('email')}
-            />
+          <PasswordInput
+            required
+            label="Пароль"
+            placeholder="Ваш пароль"
+            leftSection={<IconLock size={16} />}
+            {...form.getInputProps('password')}
+          />
 
-            <PasswordInput
-              required
-              label="Пароль"
-              placeholder="Ваш пароль"
-              leftSection={<IconLock size={16} />}
-              {...form.getInputProps('password')}
-            />
-
-            <Button type="submit" loading={loading}>
-              Войти
-            </Button>
-          </Stack>
-        </form>
-
-        <Divider label="или" labelPosition="center" my="lg" />
-
-        <Group grow>
-          <Button variant="default"  leftSection={<IconBrandGoogle size={16} />}>
-            Google
+          <Button type="submit" loading={loading} fullWidth>
+            Войти
           </Button>
-          <Button variant="default"  leftSection={<IconBrandGithub size={16} />}>
-            GitHub
-          </Button>
-        </Group>
+        </Stack>
+      </form>
 
-        <Box ta="center" mt="md">
-          <Text size="sm" c="dimmed">
-            Демо доступ: demo@example.com / demo123
-          </Text>
-        </Box>
-      </Paper>
-    </Container>
+      <Divider label="или" labelPosition="center" my="lg" />
+
+      <Group grow>
+        <Button variant="default" leftSection={<IconBrandGoogle size={16} />}>
+          Google
+        </Button>
+        <Button variant="default" leftSection={<IconBrandGithub size={16} />}>
+          GitHub
+        </Button>
+      </Group>
+
+      <Text ta="center" size="sm" mt="md">
+        Нет аккаунта?{' '}
+        <Anchor component={Link} to="/register" fw={700}>
+          Зарегистрироваться
+        </Anchor>
+      </Text>
+
+      <Box className={classes.demoHint} mt="xl" p="md">
+        <Text size="sm" fw={500} ta="center">Демо-доступ:</Text>
+        <Text size="xs" c="dimmed" ta="center">demo@example.com / demo123</Text>
+      </Box>
+    </Box>
   );
 };
 

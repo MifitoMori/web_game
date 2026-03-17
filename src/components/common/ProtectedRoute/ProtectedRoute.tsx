@@ -1,26 +1,22 @@
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@hooks/useAuth';
+import { Center, Loader } from '@mantine/core';
 
-interface ProtectedRouteProps {
-  redirectPath?: string;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  redirectPath = '/login' 
-}) => {
+const ProtectedRoute: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
-      <div className="loading-screen">
-        <div className="spinner">Загрузка...</div>
-      </div>
+      <Center h="100vh">
+        <Loader size="xl" />
+      </Center>
     );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={redirectPath} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return <Outlet />;
