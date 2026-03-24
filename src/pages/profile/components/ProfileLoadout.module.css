@@ -1,0 +1,25 @@
+.loadoutContainer {
+    background: light-dark(
+      var(--mantine-color-white),
+      var(--mantine-color-dark-7)
+    );
+  }
+  
+  .loadoutItem {
+    padding: var(--mantine-spacing-xs);
+    border-radius: var(--mantine-radius-md);
+    background: light-dark(
+      var(--mantine-color-gray-0),
+      var(--mantine-color-dark-6)
+    );
+  }
+  
+  .preview {
+    padding: var(--mantine-spacing-md);
+    background: light-dark(
+      var(--mantine-color-gray-0),
+      var(--mantine-color-dark-6)
+    );
+    border-radius: var(--mantine-radius-md);
+    font-family: monospace;
+  }

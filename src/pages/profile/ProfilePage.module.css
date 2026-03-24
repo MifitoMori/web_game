@@ -1,0 +1,29 @@
+.profileContainer {
+    min-height: calc(100vh - 60px);
+    background: light-dark(
+      var(--mantine-color-gray-0),
+      var(--mantine-color-dark-8)
+    );
+  }
+  
+  .userInfo {
+    background: light-dark(
+      var(--mantine-color-white),
+      var(--mantine-color-dark-7)
+    );
+    position: sticky;
+    top: 20px;
+  }
+  
+  .avatar {
+    border: 4px solid light-dark(
+      var(--mantine-color-gray-3),
+      var(--mantine-color-dark-4)
+    );
+  }
+  
+  @media (max-width: 768px) {
+    .userInfo {
+      position: static;
+    }
+  }

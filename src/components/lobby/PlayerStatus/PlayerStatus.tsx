@@ -4,6 +4,7 @@ import { IconCrown, IconSword, IconShield, IconTrophy, IconSettings, IconUsers} 
 import type { Player, PlayerStats } from '@types/lobby';
 import { useNavigate } from 'react-router-dom';
 import classes from './PlayerStatus.module.css';
+import { Box } from '@mantine/core';
 
 interface PlayerStatusProps {
   player: Player;
@@ -13,6 +14,10 @@ interface PlayerStatusProps {
 const PlayerStatus: React.FC<PlayerStatusProps> = ({ player, stats }) => {
   const levelProgress = (stats.experience / stats.nextLevelExp) * 100;
 const navigate = useNavigate()
+
+const handleProfileClick = () => {
+  navigate('/profile');
+};
   
   return (
     <Paper className={classes.playerCard} radius="md" withBorder>
@@ -38,11 +43,17 @@ const navigate = useNavigate()
         {/* Информация об игроке */}
         <Stack gap="xs" style={{ flex: 1 }}>
           <Group justify="space-between">
-            <div>
+          <Box 
+            onClick={handleProfileClick}
+            style={{ cursor: 'pointer'
+          }}
+            p="md"
+            bg="white"
+          >
               <Text size="xl" fw={700}>
                 {player.nickname}
               </Text>
-            </div>
+          </Box>
             
             {/* Статистика в компактном виде */}
             <Group gap="xs">

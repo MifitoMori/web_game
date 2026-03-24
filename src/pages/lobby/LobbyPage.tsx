@@ -176,7 +176,7 @@ const LobbyPage: React.FC = () => {
         {/* Левая колонка - статус игрока */}
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Stack>
-            <PlayerStatus player={mockPlayer} stats={mockPlayerStats} />
+              <PlayerStatus player={mockPlayer} stats={mockPlayerStats} />
           </Stack>
         </Grid.Col>
 

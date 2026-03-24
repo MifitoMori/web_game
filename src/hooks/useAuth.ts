@@ -7,10 +7,11 @@ interface User {
   email: string;
   firstName?: string;
   lastName?: string;
-  age?: number;
   avatar?: string;
   level?: number;
   experience?: number;
+  credits?: number;
+  rank?: string;
 }
 
 interface RegisterData {
