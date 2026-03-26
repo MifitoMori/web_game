@@ -1,17 +1,18 @@
 export interface UserProfile {
-    id: string;
-    username: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    avatar?: string;
-    level: number;
-    experience: number;
-    nextLevelExp: number;
-    credits: number;
-    rank: string;
-    joinDate: Date;
-  }
+  id: string;
+  username: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  level: number;
+  experience: number;
+  nextLevelExp: number;
+  credits: number;
+  gems?: number;
+  rank: string;
+  joinDate: Date;
+}
   
   export interface GameStats {
     totalGames: number;

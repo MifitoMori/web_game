@@ -17,6 +17,7 @@ import {
   TextInput,
   Select,
   Switch,
+  Skeleton,
   Divider
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -32,8 +33,10 @@ import {
   IconFriends
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { useProfile } from '@hooks/useProfile';
 import PlayerStatus from '@components/lobby/PlayerStatus/PlayerStatus';
 import FriendsList from '@components/lobby/FriendsList/FriendsList';
+import Shop from '@components/lobby/Shop/Shop';
 import type { Friend, PlayerStats } from '@types/lobby';
 import classes from './LobbyPage.module.css';
 
@@ -95,6 +98,13 @@ const mockFriends: Friend[] = [
 
 const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
+  const { 
+    credits, 
+    gems, 
+    inventory, 
+    isProfileReady, 
+    purchaseItem 
+  } = useProfile();
   const [opened, { open, close }] = useDisclosure(false);
   const [gameMode, setGameMode] = useState<'solo' | 'multi'>('solo');
   const [gameSettings, setGameSettings] = useState({
@@ -121,6 +131,10 @@ const LobbyPage: React.FC = () => {
     });
     close();
     // Здесь будет логика создания игры
+  };
+
+  const handlePurchase = async (item: any) => {
+    return await purchaseItem(item);
   };
 
   return (
@@ -177,6 +191,20 @@ const LobbyPage: React.FC = () => {
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Stack>
               <PlayerStatus player={mockPlayer} stats={mockPlayerStats} />
+              {/* Магазин - показываем сразу, с лоадером если данные не готовы */}
+            {!isProfileReady ? (
+              <Paper withBorder p="md">
+                <Skeleton height={40} radius="md" />
+                <Skeleton height={20} mt="sm" radius="md" />
+              </Paper>
+            ) : (
+              <Shop
+                credits={credits}
+                gems={gems}
+                inventory={inventory}
+                onPurchase={handlePurchase}
+              />
+            )}
           </Stack>
         </Grid.Col>
 

@@ -1,0 +1,56 @@
+.shopTrigger {
+    cursor: pointer;
+    transition: all 0.2s;
+    background: light-dark(
+      var(--mantine-color-white),
+      var(--mantine-color-dark-7)
+    );
+  }
+  
+  .shopTrigger:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--mantine-shadow-md);
+  }
+  
+  .shopModal {
+    background: light-dark(
+      var(--mantine-color-white),
+      var(--mantine-color-dark-8)
+    );
+  }
+  
+  .balanceBar {
+    display: flex;
+    gap: var(--mantine-spacing-md);
+    justify-content: flex-end;
+  }
+  
+  .balanceItem {
+    background: light-dark(
+      var(--mantine-color-gray-0),
+      var(--mantine-color-dark-6)
+    );
+    min-width: 120px;
+    justify-content: center;
+  }
+  
+  .shopItem {
+    transition: all 0.2s;
+    background: light-dark(
+      var(--mantine-color-gray-0),
+      var(--mantine-color-dark-6)
+    );
+  }
+  
+  .shopItem:hover:not(.owned) {
+    transform: translateX(4px);
+    border-color: var(--mantine-color-orange-5);
+  }
+  
+  .owned {
+    opacity: 0.7;
+    background: light-dark(
+      var(--mantine-color-gray-1),
+      var(--mantine-color-dark-8)
+    );
+  }

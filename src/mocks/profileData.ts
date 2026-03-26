@@ -82,6 +82,7 @@ export const mockProfile: UserProfile = {
   experience: 8750,
   nextLevelExp: 10000,
   credits: 12500,
+  gems: 500,  
   rank: 'Золотой',
   joinDate: new Date('2024-01-15'),
 };
