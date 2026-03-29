@@ -58,14 +58,6 @@ const ProfileLoadout: React.FC<ProfileLoadoutProps> = ({ loadout }) => {
         ))}
       </Stack>
 
-      <Divider my="md" />
-
-      <div className={classes.preview}>
-        <Text size="sm" c="dimmed" ta="center">
-          {loadout.title?.name || 'Без титула'} | Скин: {loadout.skin?.name || 'Стандартный'} | 
-          След: {loadout.trail?.name || 'Обычный'} | Эффект: {loadout.effect?.name || 'Нет'}
-        </Text>
-      </div>
     </Paper>
   );
 };

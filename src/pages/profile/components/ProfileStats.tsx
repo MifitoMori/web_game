@@ -54,18 +54,6 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({ stats }) => {
       icon: IconFlame,
       color: 'orange',
     },
-    {
-      title: 'Всего очков',
-      value: stats.totalScore,
-      icon: IconScoreboard,
-      color: 'grape',
-    },
-    {
-      title: 'Ср. очков',
-      value: stats.averageScore,
-      icon: IconChartBar,
-      color: 'teal',
-    },
   ];
 
   return (

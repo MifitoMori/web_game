@@ -72,8 +72,6 @@ const ProfileInventory: React.FC<ProfileInventoryProps> = ({
     : inventory.filter(item => item.type === activeTab);
 
   const availableItems = filteredInventory.filter(item => item.unlocked);
-  const lockedItems = filteredInventory.filter(item => !item.unlocked);
-
   return (
     <Paper className={classes.inventoryContainer} radius="md" withBorder p="md">
       <Group justify="space-between" mb="md">
@@ -152,30 +150,6 @@ const ProfileInventory: React.FC<ProfileInventoryProps> = ({
             </Text>
           )}
         </Grid>
-
-        {lockedItems.length > 0 && (
-          <>
-            <Text size="sm" c="dimmed" mb="xs">Закрытые предметы</Text>
-            <Grid gutter="sm">
-              {lockedItems.map((item) => (
-                <Grid.Col key={item.id} span={6}>
-                  <Paper className={classes.lockedItem} withBorder p="sm">
-                    <Group wrap="nowrap">
-                      <ThemeIcon color="gray" variant="light" size="lg">
-                        {getTypeIcon(item.type)}
-                      </ThemeIcon>
-                      <div style={{ flex: 1 }}>
-                        <Text size="sm" fw={500}>{item.name}</Text>
-                        <Text size="xs" c="dimmed">{item.description}</Text>
-                      </div>
-                      <IconStar size={16} color="gold" />
-                    </Group>
-                  </Paper>
-                </Grid.Col>
-              ))}
-            </Grid>
-          </>
-        )}
       </div>
     </Paper>
   );
