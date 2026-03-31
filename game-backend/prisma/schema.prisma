@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Healthcheck {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  login        String   @unique
+  passwordHash String
+  refreshTokenHash String?
+  firstName    String
+  secondName   String
+  gender       String
+  birthDate    DateTime
+  avatarUrl    String?
+  role         String   @default("USER")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  theme        String   @default("light")
+  profileId        Int             @unique
+  profile          Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  inventoryItems   InventoryItem[] 
+}
+
+model Profile {
+  id          Int    @id @default(autoincrement())
+  totalGames  Int    @default(0)
+  wins        Int    @default(0)
+  losses      Int    @default(0)
+  draws       Int    @default(0)
+  maxStreak   Int    @default(0)
+  rating      Int    @default(0)
+  credits     Int    @default(0)
+  experience  Int    @default(0)
+  level       Int    @default(1)
+
+  user        User?
+}
+
+model CatalogItem {
+  id             Int             @id @default(autoincrement())
+  name           String
+  description    String
+  rarity         String
+  type           String
+  price          Int
+
+  inventoryItems InventoryItem[]
+}
+
+model InventoryItem {
+  id             Int         @id @default(autoincrement())
+  userId         Int
+  catalogItemId  Int
+  receivedAt     DateTime    @default(now())
+  isEquipped     Boolean     @default(false)
+
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogItem    CatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([catalogItemId])
+}

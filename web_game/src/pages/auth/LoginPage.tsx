@@ -12,7 +12,12 @@ import {
   Box,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconMail, IconLock, IconBrandGoogle, IconBrandGithub } from '@tabler/icons-react';
+import {
+  IconLock,
+  IconBrandGoogle,
+  IconBrandGithub,
+  IconUser,
+} from '@tabler/icons-react';
 import { useAuth } from '@hooks/useAuth';
 import classes from './AuthPage.module.css';
 
@@ -23,22 +28,25 @@ const LoginPage: React.FC = () => {
 
   const form = useForm({
     initialValues: {
-      email: '',
+      login: '',
       password: '',
     },
     validate: {
-      email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Неверный email'),
-      password: (value) => (value.length >= 6 ? null : 'Пароль должен быть не менее 6 символов'),
+      login: (value) =>
+        value.trim().length >= 6 ? null : 'Логин должен быть не менее 6 символов',
+      password: (value) =>
+        value.length >= 8 ? null : 'Пароль должен быть не менее 8 символов',
     },
   });
 
   const handleSubmit = async (values: typeof form.values) => {
     setLoading(true);
+
     try {
-      await login(values.email, values.password);
+      await login(values.login, values.password);
       navigate('/lobby');
-    } catch (error) {
-      // Ошибка уже обработана в хуке
+    } catch {
+      // Ошибка уже обработана в хуке.
     } finally {
       setLoading(false);
     }
@@ -49,15 +57,15 @@ const LoginPage: React.FC = () => {
       <Text size="xl" fw={700} ta="center" mb="lg">
         Добро пожаловать!
       </Text>
-      
+
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack>
           <TextInput
             required
-            label="Email"
-            placeholder="your@email.com"
-            leftSection={<IconMail size={16} />}
-            {...form.getInputProps('email')}
+            label="Login"
+            placeholder="your_login"
+            leftSection={<IconUser size={16} />}
+            {...form.getInputProps('login')}
           />
 
           <PasswordInput
@@ -93,8 +101,12 @@ const LoginPage: React.FC = () => {
       </Text>
 
       <Box className={classes.demoHint} mt="xl" p="md">
-        <Text size="sm" fw={500} ta="center">Демо-доступ:</Text>
-        <Text size="xs" c="dimmed" ta="center">demo@example.com / demo123</Text>
+        <Text size="sm" fw={500} ta="center">
+          Авторизация через backend
+        </Text>
+        <Text size="xs" c="dimmed" ta="center">
+          Используйте существующий login и пароль
+        </Text>
       </Box>
     </Box>
   );
