@@ -1,61 +1,30 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Container, 
-  Grid, 
-  Paper, 
-  Title, 
-  Text, 
-  Group, 
-  Button, 
-  Stack,
-  ThemeIcon,
-  Badge,
-  SimpleGrid,
-  Card,
+import {
+  Button,
+  Container,
+  Divider,
+  Grid,
+  Group,
   Modal,
-  TextInput,
+  Paper,
   Select,
-  Switch,
   Skeleton,
-  Divider
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+  Title,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { 
-  IconPlayerPlay, 
-  IconUsers, 
-  IconSwords,
-  IconCrown,
-  IconSettings,
-  IconPlus,
-  IconLock,
-  IconWorld,
-  IconFriends
-} from '@tabler/icons-react';
+import { IconLock, IconPlayerPlay, IconUsers } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { useProfile } from '@hooks/useProfile';
-import PlayerStatus from '@components/lobby/PlayerStatus/PlayerStatus';
 import FriendsList from '@components/lobby/FriendsList/FriendsList';
+import PlayerStatus from '@components/lobby/PlayerStatus/PlayerStatus';
 import Shop from '@components/lobby/Shop/Shop';
+import { useProfile } from '@hooks/useProfile';
 import type { Friend, PlayerStats } from '@types/lobby';
 import classes from './LobbyPage.module.css';
-
-// Мок-данные (можно вынести в отдельный файл)
-const mockPlayer = {
-  id: 'current',
-  nickname: 'PlayerOne',
-  level: 42,
-  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=PlayerOne',
-};
-
-const mockPlayerStats: PlayerStats = {
-  wins: 127,
-  losses: 83,
-  draws: 15,
-  totalGames: 225,
-  experience: 8750,
-  nextLevelExp: 10000,
-};
 
 const mockFriends: Friend[] = [
   {
@@ -87,7 +56,7 @@ const mockFriends: Friend[] = [
     avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CasualPlayer',
     friendshipDate: new Date('2024-03-01'),
   },
-  { 
+  {
     id: '5',
     nickname: 'SpeedRunner',
     level: 89,
@@ -98,13 +67,7 @@ const mockFriends: Friend[] = [
 
 const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
-  const { 
-    credits, 
-    gems, 
-    inventory, 
-    isProfileReady, 
-    purchaseItem 
-  } = useProfile();
+  const { credits, gems, isProfileReady, profileData, purchaseItem } = useProfile();
   const [opened, { open, close }] = useDisclosure(false);
   const [gameMode, setGameMode] = useState<'solo' | 'multi'>('solo');
   const [gameSettings, setGameSettings] = useState({
@@ -118,9 +81,10 @@ const LobbyPage: React.FC = () => {
   const handlePlay = () => {
     if (gameMode === 'solo') {
       navigate('/game');
-    } else {
-      open();
+      return;
     }
+
+    open();
   };
 
   const handleCreateGame = () => {
@@ -130,22 +94,31 @@ const LobbyPage: React.FC = () => {
       color: 'green',
     });
     close();
-    // Здесь будет логика создания игры
   };
 
-  const handlePurchase = async (item: any) => {
-    return await purchaseItem(item);
-  };
+  const player = profileData
+    ? {
+        id: profileData.profile.id,
+        nickname: profileData.profile.username,
+        level: profileData.profile.level,
+        avatar: profileData.profile.avatar ?? undefined,
+      }
+    : null;
+
+  const playerStats: PlayerStats | null = profileData
+    ? {
+        wins: profileData.stats.wins,
+        losses: profileData.stats.losses,
+        draws: profileData.stats.draws,
+        totalGames: profileData.stats.totalGames,
+        experience: profileData.profile.experience,
+        nextLevelExp: profileData.profile.nextLevelExp,
+      }
+    : null;
 
   return (
     <Container size="xl" py="md" className={classes.lobbyContainer}>
-      {/* Модальное окно создания игры */}
-      <Modal 
-        opened={opened} 
-        onClose={close} 
-        title="Создание игры"
-        size="lg"
-      >
+      <Modal opened={opened} onClose={close} title="Создание игры" size="lg">
         <Stack>
           <Select
             label="Режим игры"
@@ -155,21 +128,25 @@ const LobbyPage: React.FC = () => {
               { value: 'bot_game', label: 'Игра с компьютером' },
             ]}
           />
-          
+
           <Switch
             label="Стены на поле"
             checked={gameSettings.walls}
-            onChange={(e) => setGameSettings({...gameSettings, walls: e.currentTarget.checked})}
+            onChange={(event) =>
+              setGameSettings({ ...gameSettings, walls: event.currentTarget.checked })
+            }
           />
-          
+
           <Switch
             label="Бонусы"
             checked={gameSettings.powerUps}
-            onChange={(e) => setGameSettings({...gameSettings, powerUps: e.currentTarget.checked})}
+            onChange={(event) =>
+              setGameSettings({ ...gameSettings, powerUps: event.currentTarget.checked })
+            }
           />
-          
+
           <Divider />
-          
+
           {gameSettings.private && (
             <TextInput
               label="Пароль"
@@ -178,44 +155,45 @@ const LobbyPage: React.FC = () => {
               leftSection={<IconLock size={16} />}
             />
           )}
-          
+
           <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={close}>Отмена</Button>
+            <Button variant="subtle" onClick={close}>
+              Отмена
+            </Button>
             <Button onClick={handleCreateGame}>Создать игру</Button>
           </Group>
         </Stack>
       </Modal>
 
       <Grid gutter="md">
-        {/* Левая колонка - статус игрока */}
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Stack>
-              <PlayerStatus player={mockPlayer} stats={mockPlayerStats} />
-              {/* Магазин - показываем сразу, с лоадером если данные не готовы */}
+            {player && playerStats ? (
+              <PlayerStatus player={player} stats={playerStats} />
+            ) : (
+              <Paper withBorder p="md">
+                <Skeleton height={120} radius="md" />
+                <Skeleton height={20} mt="sm" radius="md" />
+              </Paper>
+            )}
+
             {!isProfileReady ? (
               <Paper withBorder p="md">
                 <Skeleton height={40} radius="md" />
                 <Skeleton height={20} mt="sm" radius="md" />
               </Paper>
             ) : (
-              <Shop
-                credits={credits}
-                gems={gems}
-                inventory={inventory}
-                onPurchase={handlePurchase}
-              />
+              <Shop credits={credits} gems={gems} onPurchase={purchaseItem} />
             )}
           </Stack>
         </Grid.Col>
 
-        {/* Центральная колонка - игровые режимы */}
         <Grid.Col span={{ base: 12, md: 5 }}>
           <Paper className={classes.gameModes} withBorder p="md">
             <Title order={2} ta="center" mb="lg">
               Выберите режим игры
             </Title>
 
-            {/* Переключатель режимов */}
             <Group justify="center" mb="xl">
               <Button
                 variant={gameMode === 'solo' ? 'filled' : 'light'}
@@ -235,7 +213,6 @@ const LobbyPage: React.FC = () => {
               </Button>
             </Group>
 
-            {/* Кнопка Play */}
             <Button
               size="xl"
               fullWidth
@@ -250,7 +227,6 @@ const LobbyPage: React.FC = () => {
           </Paper>
         </Grid.Col>
 
-        {/* Правая колонка - список друзей */}
         <Grid.Col span={{ base: 12, md: 3 }}>
           <FriendsList friends={mockFriends} />
         </Grid.Col>

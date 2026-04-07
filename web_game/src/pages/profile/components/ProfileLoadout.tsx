@@ -1,12 +1,6 @@
 import React from 'react';
-import { Paper, Title, Text, Group, Badge, ThemeIcon, Stack, Divider } from '@mantine/core';
-import { 
-  IconCube, 
-  IconSparkles, 
-  IconBolt, 
-  IconCrown,
-  IconArmchair
-} from '@tabler/icons-react';
+import { Badge, Group, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
+import { IconBolt, IconCrown, IconCube, IconSparkles } from '@tabler/icons-react';
 import type { Loadout } from '@types/profile';
 import classes from './ProfileLoadout.module.css';
 
@@ -24,8 +18,10 @@ const ProfileLoadout: React.FC<ProfileLoadoutProps> = ({ loadout }) => {
 
   return (
     <Paper className={classes.loadoutContainer} radius="md" withBorder p="md">
-      <Title order={3} mb="md">Текущее снаряжение</Title>
-      
+      <Title order={3} mb="md">
+        Текущее снаряжение
+      </Title>
+
       <Stack gap="sm">
         {loadoutItems.map(({ type, label, icon: Icon, item }) => (
           <Group key={type} justify="space-between" className={classes.loadoutItem}>
@@ -33,31 +29,44 @@ const ProfileLoadout: React.FC<ProfileLoadoutProps> = ({ loadout }) => {
               <ThemeIcon variant="light" size="md">
                 <Icon size={18} />
               </ThemeIcon>
-              <Text size="sm" fw={500}>{label}:</Text>
+              <Text size="sm" fw={500}>
+                {label}:
+              </Text>
             </Group>
-            
+
             {item ? (
               <Group gap="xs">
                 <Text size="sm">{item.name}</Text>
-                <Badge 
-                  size="xs" 
+                <Badge
+                  size="xs"
                   variant="light"
-                  color={item.rarity === 'common' ? 'gray' :
-                         item.rarity === 'rare' ? 'blue' :
-                         item.rarity === 'epic' ? 'purple' : 'yellow'}
+                  color={
+                    item.rarity === 'common'
+                      ? 'gray'
+                      : item.rarity === 'rare'
+                        ? 'blue'
+                        : item.rarity === 'epic'
+                          ? 'purple'
+                          : 'yellow'
+                  }
                 >
-                  {item.rarity === 'common' ? 'Обычный' :
-                   item.rarity === 'rare' ? 'Редкий' :
-                   item.rarity === 'epic' ? 'Эпический' : 'Легендарный'}
+                  {item.rarity === 'common'
+                    ? 'Обычный'
+                    : item.rarity === 'rare'
+                      ? 'Редкий'
+                      : item.rarity === 'epic'
+                        ? 'Эпический'
+                        : 'Легендарный'}
                 </Badge>
               </Group>
             ) : (
-              <Text size="sm" c="dimmed">Не выбрано</Text>
+              <Text size="sm" c="dimmed">
+                Не выбрано
+              </Text>
             )}
           </Group>
         ))}
       </Stack>
-
     </Paper>
   );
 };

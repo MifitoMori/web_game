@@ -47,6 +47,7 @@ model Profile {
   maxStreak   Int    @default(0)
   rating      Int    @default(0)
   credits     Int    @default(0)
+  gems        Int    @default(0)
   experience  Int    @default(0)
   level       Int    @default(1)
 
@@ -55,11 +56,13 @@ model Profile {
 
 model CatalogItem {
   id             Int             @id @default(autoincrement())
+  slug           String          @unique
   name           String
   description    String
   rarity         String
   type           String
   price          Int
+  currency       String          @default("credits")
 
   inventoryItems InventoryItem[]
 }
@@ -76,4 +79,5 @@ model InventoryItem {
 
   @@index([userId])
   @@index([catalogItemId])
+  @@unique([userId, catalogItemId])
 }

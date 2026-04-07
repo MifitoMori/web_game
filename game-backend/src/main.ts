@@ -20,7 +20,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Game Backend API')
-    .setDescription('API РґР»СЏ backend С‡Р°СЃС‚Рё РІРµР±-РёРіСЂС‹')
+    .setDescription('API для backend части веб-игры')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

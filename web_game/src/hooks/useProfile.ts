@@ -1,211 +1,339 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
-import type { ProfileData, InventoryItem, Loadout } from '@types/profile';
-import type { ShopItem } from '@types/shop';
-import { mockProfileData } from '@mocks/profileData';
-import { shopItems } from '@mocks/shopData';
+import type { GameStats, InventoryItem, Loadout, ProfileData, UserProfile } from '@types/profile';
+import type { ShopItem, ShopPurchaseResponse } from '@types/shop';
+
+type BackendProfile = {
+  totalGames: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  maxStreak: number;
+  rating: number;
+  credits: number;
+  gems: number;
+  experience: number;
+  level: number;
+};
+
+type BackendInventoryItem = {
+  id: string;
+  slug?: string;
+  name: string;
+  description: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  type: 'skin' | 'trail' | 'effect' | 'title';
+  equipped: boolean;
+  unlocked: boolean;
+};
+
+type BackendProfileResponse = {
+  user: {
+    id: number;
+    login: string;
+    email: string;
+    firstName: string;
+    secondName: string;
+    avatarUrl: string | null;
+    createdAt: string;
+  };
+  profile: BackendProfile;
+  inventory: BackendInventoryItem[];
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+
+const getApiUrl = (path: string) => `${API_BASE_URL}${path}`;
+
+const extractErrorMessage = async (response: Response) => {
+  try {
+    const payload = await response.json();
+
+    if (Array.isArray(payload?.message)) {
+      return payload.message.join(', ');
+    }
+
+    if (typeof payload?.message === 'string') {
+      return payload.message;
+    }
+  } catch {
+    // Ignore JSON parse errors and fall back to the status text.
+  }
+
+  return response.statusText || 'Request failed';
+};
+
+const getNextLevelExp = (level: number) => Math.max(level * 250, 250);
+
+const getRank = (rating: number) => {
+  if (rating >= 2500) {
+    return 'Легенда';
+  }
+
+  if (rating >= 1800) {
+    return 'Алмаз';
+  }
+
+  if (rating >= 1200) {
+    return 'Платина';
+  }
+
+  if (rating >= 800) {
+    return 'Золото';
+  }
+
+  if (rating >= 400) {
+    return 'Серебро';
+  }
+
+  return 'Бронза';
+};
+
+const buildStats = (profile: BackendProfile): GameStats => {
+  const winRate = profile.totalGames > 0 ? (profile.wins / profile.totalGames) * 100 : 0;
+
+  return {
+    totalGames: profile.totalGames,
+    wins: profile.wins,
+    losses: profile.losses,
+    draws: profile.draws,
+    winRate: Number(winRate.toFixed(1)),
+    longestWinStreak: profile.maxStreak,
+    totalScore: profile.rating,
+    averageScore:
+      profile.totalGames > 0 ? Number((profile.rating / profile.totalGames).toFixed(1)) : 0,
+  };
+};
+
+const buildLoadout = (inventory: InventoryItem[]): Loadout => ({
+  skin: inventory.find((item) => item.type === 'skin' && item.equipped),
+  trail: inventory.find((item) => item.type === 'trail' && item.equipped),
+  effect: inventory.find((item) => item.type === 'effect' && item.equipped),
+  title: inventory.find((item) => item.type === 'title' && item.equipped),
+});
+
+const mapProfileData = (payload: BackendProfileResponse): ProfileData => {
+  const inventory: InventoryItem[] = payload.inventory.map((item) => ({
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    description: item.description,
+    rarity: item.rarity,
+    type: item.type,
+    equipped: item.equipped,
+    unlocked: item.unlocked,
+  }));
+
+  const userProfile: UserProfile = {
+    id: payload.user.id.toString(),
+    username: payload.user.login,
+    email: payload.user.email,
+    firstName: payload.user.firstName,
+    lastName: payload.user.secondName,
+    avatar: payload.user.avatarUrl,
+    level: payload.profile.level,
+    experience: payload.profile.experience,
+    nextLevelExp: getNextLevelExp(payload.profile.level + 1),
+    credits: payload.profile.credits,
+    gems: payload.profile.gems,
+    rank: getRank(payload.profile.rating),
+    joinDate: new Date(payload.user.createdAt),
+  };
+
+  return {
+    profile: userProfile,
+    stats: buildStats(payload.profile),
+    inventory,
+    loadout: buildLoadout(inventory),
+  };
+};
 
 export const useProfile = () => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // Добавляем отдельные состояния для баланса, чтобы показывать сразу
-  const [credits, setCredits] = useState<number>(0);
-  const [gems, setGems] = useState<number>(0);
+  const [credits, setCredits] = useState(0);
+  const [gems, setGems] = useState(0);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isProfileReady, setIsProfileReady] = useState(false);
 
-  useEffect(() => {
-    const loadProfile = async () => {
+  const loadProfile = async (showLoader = true) => {
+    if (showLoader) {
       setIsLoading(true);
-      try {
-        // Имитация загрузки
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Устанавливаем данные
-        setProfileData(mockProfileData);
-        setCredits(mockProfileData.profile.credits);
-        setGems(mockProfileData.profile.gems || 0);
-        setInventory(mockProfileData.inventory);
-        setIsProfileReady(true);
-      } catch (error) {
-        console.error('Failed to load profile:', error);
-      } finally {
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        throw new Error('Пользователь не авторизован');
+      }
+
+      const response = await fetch(getApiUrl('/api/profile'), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response));
+      }
+
+      const backendProfile = (await response.json()) as BackendProfileResponse;
+      const mappedProfile = mapProfileData(backendProfile);
+
+      setProfileData(mappedProfile);
+      setCredits(mappedProfile.profile.credits);
+      setGems(mappedProfile.profile.gems);
+      setInventory(mappedProfile.inventory);
+      setIsProfileReady(true);
+
+      return mappedProfile;
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      setProfileData(null);
+      setIsProfileReady(false);
+      throw error;
+    } finally {
+      if (showLoader) {
         setIsLoading(false);
       }
-    };
+    }
+  };
 
-    loadProfile();
+  useEffect(() => {
+    void loadProfile();
   }, []);
 
   const equipItem = async (item: InventoryItem) => {
-    if (!profileData) return false;
-
     try {
-      const updatedInventory = profileData.inventory.map(i => {
-        if (i.id === item.id) {
-          return { ...i, equipped: true };
-        }
-        if (i.type === item.type && i.equipped) {
-          return { ...i, equipped: false };
-        }
-        return i;
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        throw new Error('Пользователь не авторизован');
+      }
+
+      const response = await fetch(getApiUrl('/api/profile/equip'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ inventoryItemId: Number(item.id) }),
       });
 
-      const updatedLoadout: Loadout = {
-        ...profileData.loadout,
-        [item.type]: { ...item, equipped: true }
-      };
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response));
+      }
 
-      setProfileData({
-        ...profileData,
-        inventory: updatedInventory,
-        loadout: updatedLoadout
-      });
-      
-      // Обновляем отдельное состояние инвентаря
-      setInventory(updatedInventory);
+      await loadProfile(false);
 
       notifications.show({
         title: 'Предмет экипирован',
         message: `${item.name} теперь в вашем снаряжении`,
         color: 'green',
       });
-      
+
       return true;
     } catch (error) {
       notifications.show({
         title: 'Ошибка',
-        message: 'Не удалось экипировать предмет',
+        message: error instanceof Error ? error.message : 'Не удалось экипировать предмет',
         color: 'red',
       });
+
       return false;
     }
   };
 
   const unequipItem = async (itemType: string) => {
-    if (!profileData) return false;
-
     try {
-      const updatedInventory = profileData.inventory.map(i => {
-        if (i.type === itemType && i.equipped) {
-          return { ...i, equipped: false };
-        }
-        return i;
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        throw new Error('Пользователь не авторизован');
+      }
+
+      const response = await fetch(getApiUrl('/api/profile/unequip'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ type: itemType }),
       });
 
-      const updatedLoadout: Loadout = {
-        ...profileData.loadout,
-        [itemType]: undefined
-      };
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response));
+      }
 
-      setProfileData({
-        ...profileData,
-        inventory: updatedInventory,
-        loadout: updatedLoadout
-      });
-      
-      setInventory(updatedInventory);
+      await loadProfile(false);
 
       notifications.show({
         title: 'Предмет снят',
         message: 'Предмет убран из снаряжения',
         color: 'blue',
       });
-      
+
       return true;
     } catch (error) {
       notifications.show({
         title: 'Ошибка',
-        message: 'Не удалось снять предмет',
+        message: error instanceof Error ? error.message : 'Не удалось снять предмет',
         color: 'red',
       });
+
       return false;
     }
   };
 
   const purchaseItem = async (shopItem: ShopItem): Promise<boolean> => {
-    if (!profileData) return false;
-
-    // Проверяем, есть ли уже такой предмет
-    const alreadyOwned = inventory.some(i => i.name === shopItem.name);
-    if (alreadyOwned) {
-      notifications.show({
-        title: 'Уже есть',
-        message: 'Этот предмет уже у вас есть',
-        color: 'yellow',
-      });
-      return false;
-    }
-
-    // Проверяем баланс
-    if (shopItem.currency === 'credits' && credits < shopItem.price) {
-      notifications.show({
-        title: 'Недостаточно средств',
-        message: `Вам не хватает ${shopItem.price - credits} кредитов`,
-        color: 'red',
-      });
-      return false;
-    }
-    
-    if (shopItem.currency === 'gems' && gems < shopItem.price) {
-      notifications.show({
-        title: 'Недостаточно средств',
-        message: `Вам не хватает ${shopItem.price - gems} гемов`,
-        color: 'red',
-      });
-      return false;
-    }
-
     try {
-      // Создаем новый предмет для инвентаря
-      const newItem: InventoryItem = {
-        id: Date.now().toString(),
-        name: shopItem.name,
-        type: shopItem.type,
-        description: shopItem.description,
-        rarity: shopItem.rarity,
-        equipped: false,
-        unlocked: true,
-      };
+      const token = localStorage.getItem('token');
 
-      // Обновляем баланс
-      const newCredits = shopItem.currency === 'credits' 
-        ? credits - shopItem.price 
-        : credits;
-      
-      const newGems = shopItem.currency === 'gems' 
-        ? gems - shopItem.price 
-        : gems;
+      if (!token) {
+        throw new Error('Пользователь не авторизован');
+      }
 
-      // Обновляем отдельные состояния
-      setCredits(newCredits);
-      setGems(newGems);
-      setInventory([...inventory, newItem]);
+      const slug = 'slug' in shopItem && typeof shopItem.slug === 'string' ? shopItem.slug : null;
 
-      // Обновляем profileData для согласованности
-      setProfileData({
-        ...profileData,
-        profile: {
-          ...profileData.profile,
-          credits: newCredits,
-          gems: newGems,
+      if (!slug) {
+        throw new Error('Не удалось определить предмет для покупки');
+      }
+
+      const response = await fetch(getApiUrl('/api/shop/purchase'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
-        inventory: [...profileData.inventory, newItem],
+        body: JSON.stringify({ slug }),
       });
+
+      if (!response.ok) {
+        throw new Error(await extractErrorMessage(response));
+      }
+
+      const purchaseResult = (await response.json()) as ShopPurchaseResponse;
+
+      await loadProfile(false);
+
+      setCredits(purchaseResult.balances.credits);
+      setGems(purchaseResult.balances.gems);
 
       notifications.show({
         title: 'Покупка совершена!',
-        message: `${shopItem.name} добавлен в инвентарь`,
+        message: `${purchaseResult.item.name} добавлен в инвентарь`,
         color: 'green',
       });
-      
+
       return true;
     } catch (error) {
       notifications.show({
         title: 'Ошибка',
-        message: 'Не удалось совершить покупку',
+        message: error instanceof Error ? error.message : 'Не удалось совершить покупку',
         color: 'red',
       });
+
       return false;
     }
   };

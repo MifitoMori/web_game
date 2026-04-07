@@ -10,6 +10,7 @@ type BackendProfile = {
   maxStreak: number;
   rating: number;
   credits: number;
+  gems: number;
   experience: number;
   level: number;
 };

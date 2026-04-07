@@ -1,7 +1,7 @@
 import type { InventoryItem } from './profile';
 
 export interface ShopItem {
-  id: string;
+  id: string | number;
   name: string;
   type: 'skin' | 'trail' | 'effect' | 'title';
   description: string;
@@ -12,10 +12,30 @@ export interface ShopItem {
   preview?: string;
 }
 
-export interface ShopCategory {
+export interface ShopCatalogItem extends ShopItem {
+  slug: string;
+  owned: boolean;
+  equipped: boolean;
+}
+
+export interface ShopPurchaseResponse {
+  success: boolean;
+  item: ShopCatalogItem;
+  inventoryItem: {
+    id: number;
+    isEquipped: boolean;
+    receivedAt: string;
+  };
+  balances: {
+    credits: number;
+    gems: number;
+  };
+}
+
+export interface ShopCategory<TItem = ShopItem> {
   id: string;
   name: string;
-  items: ShopItem[];
+  items: TItem[];
 }
 
 export interface PurchaseResult {
