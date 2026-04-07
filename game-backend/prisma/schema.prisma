@@ -17,6 +17,11 @@ model Healthcheck {
   createdAt DateTime @default(now())
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique
@@ -28,7 +33,7 @@ model User {
   gender       String
   birthDate    DateTime
   avatarUrl    String?
-  role         String   @default("USER")
+  role         Role   @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   theme        String   @default("light")

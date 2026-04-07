@@ -11,11 +11,12 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UsersService } from '../users/users.service';
 import { createHash } from 'crypto';
+import { Role } from '@prisma/client';
 
 type AuthPayload = {
   sub: number;
   login: string;
-  role: string;
+  role: Role;
 };
 
 @Injectable()
@@ -53,7 +54,7 @@ export class AuthService {
     gender: string;
     birthDate: Date;
     avatarUrl: string | null;
-    role: string;
+    role: Role;
     createdAt: Date;
     updatedAt: Date;
     profile?: {

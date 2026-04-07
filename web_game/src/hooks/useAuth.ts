@@ -24,7 +24,7 @@ type BackendUser = {
   gender: string;
   birthDate: string;
   avatarUrl: string | null;
-  role: string;
+  role: 'USER' | 'ADMIN';
   createdAt: string;
   updatedAt: string;
   profile?: BackendProfile;
@@ -50,6 +50,7 @@ interface User {
   credits?: number;
   rank?: string;
   profile?: BackendProfile;
+  role: 'USER' | 'ADMIN';
 }
 
 interface RegisterData {
@@ -91,6 +92,7 @@ const mapUser = (user: BackendUser): User => ({
   experience: user.profile?.experience,
   credits: user.profile?.credits,
   profile: user.profile,
+  role: user.role
 });
 
 const extractErrorMessage = async (response: Response) => {
