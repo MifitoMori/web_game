@@ -24,7 +24,7 @@ import PlayerStatus from '@components/lobby/PlayerStatus/PlayerStatus';
 import Shop from '@components/lobby/Shop/Shop';
 import { useAuth } from '@hooks/useAuth';
 import { useProfile } from '@hooks/useProfile';
-import type { Friend, PlayerStats } from '@types/lobby';
+import type { Friend, PlayerStats } from '@app-types/lobby';
 import classes from './LobbyPage.module.css';
 
 const mockFriends: Friend[] = [

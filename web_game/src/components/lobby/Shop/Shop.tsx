@@ -28,7 +28,7 @@ import {
   IconSparkles,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import type { ShopCatalogItem, ShopCategory, ShopItem } from '@types/shop';
+import type { ShopCatalogItem, ShopCategory, ShopItem } from '@app-types/shop';
 import classes from './Shop.module.css';
 
 interface ShopProps {

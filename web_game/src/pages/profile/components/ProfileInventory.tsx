@@ -7,7 +7,7 @@ import {
   IconCube,
   IconSparkles,
 } from '@tabler/icons-react';
-import type { InventoryItem } from '@types/profile';
+import type { InventoryItem } from '@app-types/profile';
 import classes from './ProfileInventory.module.css';
 
 interface ProfileInventoryProps {

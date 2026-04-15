@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
-import type { GameStats, InventoryItem, Loadout, ProfileData, UserProfile } from '@types/profile';
-import type { ShopItem, ShopPurchaseResponse } from '@types/shop';
+import type { GameStats, InventoryItem, Loadout, ProfileData, UserProfile } from '@app-types/profile';
+import type { ShopItem, ShopPurchaseResponse } from '@app-types/shop';
 
 type BackendProfile = {
   totalGames: number;

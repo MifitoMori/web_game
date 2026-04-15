@@ -1,7 +1,7 @@
 import React from 'react';
 import { Paper, Group, Avatar, Text, Badge, Progress, Stack, Button} from '@mantine/core';
 import { IconCrown, IconSword, IconShield, IconTrophy, IconSettings, IconUsers} from '@tabler/icons-react';
-import type { Player, PlayerStats } from '@types/lobby';
+import type { Player, PlayerStats } from '@app-types/lobby';
 import { useNavigate } from 'react-router-dom';
 import classes from './PlayerStatus.module.css';
 import { Box } from '@mantine/core';

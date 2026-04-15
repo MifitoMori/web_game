@@ -25,7 +25,7 @@ import {
   IconUserMinus,
   IconUsers
 } from '@tabler/icons-react';
-import type { Friend } from '@types/lobby';
+import type { Friend } from '@app-types/lobby';
 import classes from './FriendsList.module.css';
 
 interface FriendsListProps {

@@ -1,9 +1,9 @@
 import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { AdminService } from "./admin.service";
-import { Roles } from "src/common/roles.decorator";
+import { Roles } from "../../common/roles.decorator";
 import { ApiBearerAuth } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { RolesGuard } from "src/common/roles.guard";
+import { RolesGuard } from "../../common/roles.guard";
 import { Role } from "@prisma/client";
 import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
 import { CreateCatalogItemDto } from "./dto/create-catalog-item.dto";

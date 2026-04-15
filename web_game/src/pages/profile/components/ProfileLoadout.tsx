@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge, Group, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
 import { IconBolt, IconCrown, IconCube, IconSparkles } from '@tabler/icons-react';
-import type { Loadout } from '@types/profile';
+import type { Loadout } from '@app-types/profile';
 import classes from './ProfileLoadout.module.css';
 
 interface ProfileLoadoutProps {

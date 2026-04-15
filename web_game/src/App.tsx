@@ -39,7 +39,7 @@ function App() {
 
             <Route element={<ProtectedRoute />}>
               <Route element={<MainLayout />}>
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/" element={<Navigate to="/lobby" replace />} />
                 <Route path="/lobby" element={<LobbyPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/shop" element={<ShopPage />} />

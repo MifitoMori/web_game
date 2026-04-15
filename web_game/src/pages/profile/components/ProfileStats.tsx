@@ -8,7 +8,7 @@ import {
   IconTrendingUp,
   IconTrophy,
 } from '@tabler/icons-react';
-import type { GameStats } from '@types/profile';
+import type { GameStats } from '@app-types/profile';
 import classes from './ProfileStats.module.css';
 
 interface ProfileStatsProps {

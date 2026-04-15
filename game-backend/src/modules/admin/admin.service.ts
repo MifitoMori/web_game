@@ -2,7 +2,7 @@ import {
     BadRequestException,
     Injectable,
     NotFoundException, } from "@nestjs/common";
-import { PrismaService } from "src/prisma/prisma.service";
+import { PrismaService } from "../../prisma/prisma.service";
 import { Role } from "@prisma/client";
 import { CreateCatalogItemDto } from "./dto/create-catalog-item.dto";
 import { UpdateCatalogItemDto } from "./dto/update-catalog-item.dto";
