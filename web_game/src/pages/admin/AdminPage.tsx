@@ -56,7 +56,7 @@ const rarityOptions = [
 
 const typeOptions = [
   { value: 'skin', label: 'Скин' },
-  { value: 'trail', label: 'Трейл' },
+  { value: 'trail', label: 'След' },
   { value: 'effect', label: 'Эффект' },
   { value: 'title', label: 'Титул' },
 ];
@@ -184,14 +184,8 @@ const AdminPage = () => {
         onClose={close}
         title={editingItem ? 'Редактирование товара' : 'Новый товар'}
         centered
-        styles={{
-          body: {
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          },
-        }}
       >
-        <Stack gap="xs">
+        <Stack>
           <TextInput
             label="Slug"
             value={catalogForm.slug}
