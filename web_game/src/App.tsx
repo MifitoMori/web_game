@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
@@ -7,6 +6,7 @@ import AuthLayout from '@layouts/AuthLayout';
 import MainLayout from '@layouts/MainLayout';
 import GameLayout from '@layouts/GameLayout';
 import ProtectedRoute from '@components/common/ProtectedRoute/ProtectedRoute';
+import AdminRoute from '@components/common/AdminRoute/AdminRoute';
 
 // Регистрация
 import LoginPage from '@pages/auth/LoginPage';
@@ -19,6 +19,7 @@ import ShopPage from '@pages/shop/ShopPage';
 import LeaderboardPage from '@pages/leaderboard/LeaderboardPage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import GamePage from '@pages/game/GamePage';
+import AdminPage from '@pages/admin/AdminPage';
 
 // Стили
 import '@mantine/core/styles.css';
@@ -48,6 +49,12 @@ function App() {
 
               <Route element={<GameLayout />}>
                 <Route path="/game" element={<GamePage />} />
+              </Route>
+
+              <Route element={<AdminRoute />}>
+                <Route element={<MainLayout />}>
+                  <Route path="/admin" element={<AdminPage />} />
+                </Route>
               </Route>
             </Route>
 

@@ -6,6 +6,7 @@ export const ROUTES = {
   LEADERBOARD: '/leaderboard',
   SETTINGS: '/settings',
   GAME: '/game',
+  ADMIN: '/admin',
 } as const;
 
 export type RoutePath = typeof ROUTES[keyof typeof ROUTES];
@@ -18,4 +19,5 @@ export const PROTECTED_ROUTES = [
   ROUTES.LEADERBOARD,
   ROUTES.SETTINGS,
   ROUTES.GAME,
+  ROUTES.ADMIN,
 ];

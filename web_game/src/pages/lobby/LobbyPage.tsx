@@ -22,6 +22,7 @@ import { notifications } from '@mantine/notifications';
 import FriendsList from '@components/lobby/FriendsList/FriendsList';
 import PlayerStatus from '@components/lobby/PlayerStatus/PlayerStatus';
 import Shop from '@components/lobby/Shop/Shop';
+import { useAuth } from '@hooks/useAuth';
 import { useProfile } from '@hooks/useProfile';
 import type { Friend, PlayerStats } from '@types/lobby';
 import classes from './LobbyPage.module.css';
@@ -67,6 +68,7 @@ const mockFriends: Friend[] = [
 
 const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { credits, gems, isProfileReady, profileData, purchaseItem } = useProfile();
   const [opened, { open, close }] = useDisclosure(false);
   const [gameMode, setGameMode] = useState<'solo' | 'multi'>('solo');
@@ -193,6 +195,18 @@ const LobbyPage: React.FC = () => {
             <Title order={2} ta="center" mb="lg">
               Выберите режим игры
             </Title>
+
+            {user?.role === 'ADMIN' && (
+              <Button
+                variant="light"
+                color="orange"
+                mb="md"
+                fullWidth
+                onClick={() => navigate('/admin')}
+              >
+                Открыть админ-панель
+              </Button>
+            )}
 
             <Group justify="center" mb="xl">
               <Button

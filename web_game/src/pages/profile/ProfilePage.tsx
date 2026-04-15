@@ -22,10 +22,12 @@ import {
   IconCalendar,
   IconCoin,
   IconDiamond,
+  IconLogout,
   IconMail,
   IconStar,
   IconTrophy,
 } from '@tabler/icons-react';
+import { useAuth } from '@hooks/useAuth';
 import { useProfile } from '@hooks/useProfile';
 import ProfileInventory from './components/ProfileInventory';
 import ProfileLoadout from './components/ProfileLoadout';
@@ -34,6 +36,7 @@ import classes from './ProfilePage.module.css';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const { profileData, isLoading, equipItem, unequipItem } = useProfile();
 
   if (isLoading) {
@@ -63,6 +66,11 @@ const ProfilePage: React.FC = () => {
 
   const { profile, stats, inventory, loadout } = profileData;
   const levelProgress = Math.min((profile.experience / profile.nextLevelExp) * 100, 100);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <Container size="xl" py="xl" className={classes.profileContainer}>
@@ -154,6 +162,17 @@ const ProfilePage: React.FC = () => {
               </Group>
               <Progress value={levelProgress} size="md" color="blue" striped animated />
             </div>
+
+            <Button
+              mt="md"
+              fullWidth
+              variant="light"
+              color="red"
+              leftSection={<IconLogout size={16} />}
+              onClick={() => void handleLogout()}
+            >
+              Выйти
+            </Button>
           </Paper>
         </Grid.Col>
 
