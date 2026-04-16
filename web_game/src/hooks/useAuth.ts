@@ -24,7 +24,7 @@ type BackendUser = {
   gender: string;
   birthDate: string;
   avatarUrl: string | null;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
   createdAt: string;
   updatedAt: string;
   profile?: BackendProfile;
@@ -50,7 +50,7 @@ interface User {
   credits?: number;
   rank?: string;
   profile?: BackendProfile;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 }
 
 interface RegisterData {
@@ -107,7 +107,7 @@ const extractErrorMessage = async (response: Response) => {
       return payload.message;
     }
   } catch {
-    // Ignore JSON parse errors and fallback to status text below.
+    
   }
 
   return response.statusText || 'Request failed';

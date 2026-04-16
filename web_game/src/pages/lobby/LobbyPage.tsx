@@ -196,7 +196,7 @@ const LobbyPage: React.FC = () => {
               Выберите режим игры
             </Title>
 
-            {user?.role === 'ADMIN' && (
+            {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
               <Button
                 variant="light"
                 color="orange"

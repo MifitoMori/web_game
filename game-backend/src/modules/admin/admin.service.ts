@@ -1,17 +1,18 @@
-import {   
-    BadRequestException,
-    Injectable,
-    NotFoundException, } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
-import { Role } from "@prisma/client";
-import { CreateCatalogItemDto } from "./dto/create-catalog-item.dto";
-import { UpdateCatalogItemDto } from "./dto/update-catalog-item.dto";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { CreateCatalogItemDto } from './dto/create-catalog-item.dto';
+import { UpdateCatalogItemDto } from './dto/update-catalog-item.dto';
 
 @Injectable()
-export class AdminService{
+export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
-    private safeUserSelect = {
+  private readonly safeUserSelect = {
     id: true,
     email: true,
     login: true,
@@ -40,87 +41,131 @@ export class AdminService{
     },
   } as const;
 
-  async findAllUsers(){
+  private readonly editableRoles: Role[] = [Role.USER, Role.ADMIN];
+
+  async findAllUsers() {
     const gameUsers = await this.prisma.user.findMany({
-        orderBy: { id: 'asc' },
-        select: this.safeUserSelect,
+      orderBy: { id: 'asc' },
+      select: this.safeUserSelect,
     });
+
     return gameUsers.map((user) => {
-        return {
-            id: user.id,
-            firstName: user.firstName,
-            secondName: user.secondName,
-            login: user.login,
-            email: user.email,
-            role: user.role,
-            createdAt: user.createdAt,
-        };
+      return {
+        id: user.id,
+        firstName: user.firstName,
+        secondName: user.secondName,
+        login: user.login,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+      };
     });
   }
 
-  async updateUserRole(userId: number, role: Role){
-    const gameUser = await this.prisma.user.findUnique({
-        where: {id: userId},
-        select: { role: true }
+  async updateUserRole(params: {
+    actorId: number;
+    actorRole: Role;
+    targetUserId: number;
+    nextRole: Role;
+  }) {
+    const { actorId, actorRole, targetUserId, nextRole } = params;
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { id: true, role: true },
     });
-    if (!gameUser){
-        throw new NotFoundException('Пользователь не найден');
+
+    if (!targetUser) {
+      throw new NotFoundException('Пользователь не найден');
     }
-    const updatedUser = await this.prisma.user.update({
-        where: {id: userId },
-        data: {role}
+
+    if (!this.editableRoles.includes(nextRole)) {
+      throw new BadRequestException(
+        'Эту роль нельзя назначить через админ-панель',
+      );
+    }
+
+    if (actorId === targetUserId) {
+      throw new BadRequestException(
+        'Нельзя изменить роль собственного аккаунта',
+      );
+    }
+
+    if (targetUser.role === Role.SUPER_ADMIN) {
+      throw new BadRequestException(
+        'Роль супер админа меняется только вручную в базе данных',
+      );
+    }
+
+    if (actorRole === Role.ADMIN) {
+      const canPromoteUser =
+        targetUser.role === Role.USER && nextRole === Role.ADMIN;
+
+      if (!canPromoteUser) {
+        throw new BadRequestException(
+          'Админ может только назначить обычного пользователя админом',
+        );
+      }
+    }
+
+    if (actorRole !== Role.ADMIN && actorRole !== Role.SUPER_ADMIN) {
+      throw new BadRequestException('Недостаточно прав для изменения роли');
+    }
+
+    return this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { role: nextRole },
     });
-    return updatedUser
   }
 
-  async findAllCatalogItems(){
-    const catalogItems = await this.prisma.catalogItem.findMany({
-        orderBy: { id: 'asc' },
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          description: true,
-          rarity: true,
-          type: true,
-          price: true,
-          currency: true
-        } 
+  async findAllCatalogItems() {
+    return this.prisma.catalogItem.findMany({
+      orderBy: { id: 'asc' },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        description: true,
+        rarity: true,
+        type: true,
+        price: true,
+        currency: true,
+      },
     });
-    return catalogItems
   }
 
-  async createCatalogItem(dto: CreateCatalogItemDto){
-    const newCatalogItem = await this.prisma.catalogItem.create({
-      data: dto
+  async createCatalogItem(dto: CreateCatalogItemDto) {
+    return this.prisma.catalogItem.create({
+      data: dto,
     });
-    return newCatalogItem
   }
 
-  async updateCatalogItem(id: number, dto: UpdateCatalogItemDto){
+  async updateCatalogItem(id: number, dto: UpdateCatalogItemDto) {
     const updatedItem = await this.prisma.catalogItem.findUnique({
-      where: {id}
+      where: { id },
     });
-    if (!updatedItem){
+
+    if (!updatedItem) {
       throw new NotFoundException('Предмет не найден');
     }
-    const updatedCatalogItem = await this.prisma.catalogItem.update({
-      where: {id},
-      data: dto
+
+    return this.prisma.catalogItem.update({
+      where: { id },
+      data: dto,
     });
-    return updatedCatalogItem
   }
-    
-  async deleteCatalogItem(id: number){
+
+  async deleteCatalogItem(id: number) {
     const deletedItem = await this.prisma.catalogItem.findUnique({
-      where: {id}
+      where: { id },
     });
-    if (!deletedItem){
+
+    if (!deletedItem) {
       throw new NotFoundException('Предмет не найден');
     }
-    const deletedCatalogItem = await this.prisma.catalogItem.delete({
-      where: {id}
+
+    return this.prisma.catalogItem.delete({
+      where: { id },
     });
-    return deletedCatalogItem
   }
 }

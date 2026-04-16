@@ -18,7 +18,7 @@ const AdminRoute = () => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user?.role !== 'ADMIN') {
+  if (user?.role !== 'ADMIN' && user?.role !== 'SUPER_ADMIN') {
     return (
       <Center h="100vh">
         <Stack gap="xs" align="center">

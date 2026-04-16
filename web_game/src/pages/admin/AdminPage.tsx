@@ -34,18 +34,29 @@ import {
   IconUsers,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@hooks/useAuth';
 import {
   type AdminCatalogItem,
   type AdminRole,
   type CatalogFormValues,
   useAdmin,
 } from '@hooks/useAdmin';
-import { useAuth } from '@hooks/useAuth';
 
 const roleOptions = [
   { value: 'USER', label: 'USER' },
   { value: 'ADMIN', label: 'ADMIN' },
 ];
+
+const getRoleLabel = (role: AdminRole) => {
+  switch (role) {
+    case 'SUPER_ADMIN':
+      return 'SUPER_ADMIN';
+    case 'ADMIN':
+      return 'ADMIN';
+    default:
+      return 'USER';
+  }
+};
 
 const rarityOptions = [
   { value: 'common', label: 'Обычная' },
@@ -76,6 +87,8 @@ const defaultCatalogForm: CatalogFormValues = {
   currency: 'credits',
 };
 
+type CatalogFormErrors = Partial<Record<keyof CatalogFormValues, string>>;
+
 const AdminPage = () => {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
@@ -90,10 +103,12 @@ const AdminPage = () => {
     updateCatalogItem,
     deleteCatalogItem,
   } = useAdmin();
+
   const [selectedRoles, setSelectedRoles] = useState<Record<number, AdminRole>>({});
   const [opened, { open, close }] = useDisclosure(false);
   const [editingItem, setEditingItem] = useState<AdminCatalogItem | null>(null);
   const [catalogForm, setCatalogForm] = useState<CatalogFormValues>(defaultCatalogForm);
+  const [catalogFormErrors, setCatalogFormErrors] = useState<CatalogFormErrors>({});
 
   useEffect(() => {
     setSelectedRoles(
@@ -105,13 +120,40 @@ const AdminPage = () => {
     return selectedRoles[userId] ?? 'USER';
   };
 
+  const currentRoleLabel =
+    currentUser?.role === 'SUPER_ADMIN'
+      ? 'Супер-админ'
+      : currentUser?.role === 'ADMIN'
+        ? 'Админ'
+        : 'Пользователь';
+
+  const canEditRole = (user: { id: number; role: AdminRole }) => {
+    if (!currentUser) {
+      return false;
+    }
+
+    if (currentUser.id === user.id) {
+      return false;
+    }
+
+    if (user.role === 'SUPER_ADMIN') {
+      return false;
+    }
+
+    if (currentUser.role === 'SUPER_ADMIN') {
+      return true;
+    }
+
+    return currentUser.role === 'ADMIN' && user.role === 'USER';
+  };
+
   const stats = useMemo(
     () => ({
       totalUsers: users.length,
-      totalAdmins: users.filter((user) => ensureRoleValue(user.id) === 'ADMIN').length,
+      totalAdmins: users.filter((user) => user.role !== 'USER').length,
       totalCatalogItems: catalogItems.length,
     }),
-    [catalogItems.length, selectedRoles, users],
+    [catalogItems.length, users],
   );
 
   const handleRoleSelect = (userId: number, value: string | null) => {
@@ -129,15 +171,76 @@ const AdminPage = () => {
     field: keyof CatalogFormValues,
     value: string | number,
   ) => {
+    const nextValue = field === 'price' ? Number(value) : value;
+
     setCatalogForm((current) => ({
       ...current,
-      [field]: field === 'price' ? Number(value) : value,
+      [field]: nextValue,
     }));
+
+    setCatalogFormErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      const nextErrors = { ...current };
+      delete nextErrors[field];
+      return nextErrors;
+    });
+  };
+
+  const validateCatalogForm = () => {
+    const nextErrors: CatalogFormErrors = {};
+    const slug = catalogForm.slug.trim();
+    const name = catalogForm.name.trim();
+    const description = catalogForm.description.trim();
+
+    if (slug.length < 3) {
+      nextErrors.slug = 'Slug должен содержать минимум 3 символа';
+    } else if (slug.length > 100) {
+      nextErrors.slug = 'Slug не должен быть длиннее 100 символов';
+    }
+
+    if (!name) {
+      nextErrors.name = 'Введите название товара';
+    }
+
+    if (!description) {
+      nextErrors.description = 'Введите описание товара';
+    }
+
+    if (!Number.isFinite(catalogForm.price) || catalogForm.price <= 0) {
+      nextErrors.price = 'Цена должна быть больше 0';
+    }
+
+    if (!catalogForm.rarity) {
+      nextErrors.rarity = 'Выберите редкость';
+    }
+
+    if (!catalogForm.type) {
+      nextErrors.type = 'Выберите категорию';
+    }
+
+    if (!catalogForm.currency) {
+      nextErrors.currency = 'Выберите валюту';
+    }
+
+    setCatalogFormErrors(nextErrors);
+
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const resetCatalogModalState = () => {
+    setEditingItem(null);
+    setCatalogForm(defaultCatalogForm);
+    setCatalogFormErrors({});
+    close();
   };
 
   const openCreateModal = () => {
     setEditingItem(null);
     setCatalogForm(defaultCatalogForm);
+    setCatalogFormErrors({});
     open();
   };
 
@@ -152,19 +255,22 @@ const AdminPage = () => {
       price: item.price,
       currency: item.currency,
     });
+    setCatalogFormErrors({});
     open();
   };
 
   const handleSubmitCatalogForm = async () => {
+    if (!validateCatalogForm()) {
+      return;
+    }
+
     if (editingItem) {
       await updateCatalogItem(editingItem.id, catalogForm);
     } else {
       await createCatalogItem(catalogForm);
     }
 
-    close();
-    setEditingItem(null);
-    setCatalogForm(defaultCatalogForm);
+    resetCatalogModalState();
   };
 
   if (isLoading) {
@@ -181,58 +287,72 @@ const AdminPage = () => {
     <Container size="xl" py="xl">
       <Modal
         opened={opened}
-        onClose={close}
+        onClose={resetCatalogModalState}
         title={editingItem ? 'Редактирование товара' : 'Новый товар'}
         centered
+        size="xl"
       >
-        <Stack>
-          <TextInput
-            label="Slug"
-            value={catalogForm.slug}
-            onChange={(event) => handleCatalogFieldChange('slug', event.currentTarget.value)}
-          />
-          <TextInput
-            label="Название"
-            value={catalogForm.name}
-            onChange={(event) => handleCatalogFieldChange('name', event.currentTarget.value)}
-          />
+        <Stack gap="sm">
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" verticalSpacing="sm">
+            <TextInput
+              label="Slug"
+              value={catalogForm.slug}
+              error={catalogFormErrors.slug}
+              onChange={(event) => handleCatalogFieldChange('slug', event.currentTarget.value)}
+            />
+            <TextInput
+              label="Название"
+              value={catalogForm.name}
+              error={catalogFormErrors.name}
+              onChange={(event) => handleCatalogFieldChange('name', event.currentTarget.value)}
+            />
+            <Select
+              label="Редкость"
+              value={catalogForm.rarity}
+              data={rarityOptions}
+              allowDeselect={false}
+              error={catalogFormErrors.rarity}
+              onChange={(value) => value && handleCatalogFieldChange('rarity', value)}
+            />
+            <Select
+              label="Категория"
+              value={catalogForm.type}
+              data={typeOptions}
+              allowDeselect={false}
+              error={catalogFormErrors.type}
+              onChange={(value) => value && handleCatalogFieldChange('type', value)}
+            />
+            <TextInput
+              label="Цена"
+              type="number"
+              min={1}
+              value={catalogForm.price.toString()}
+              error={catalogFormErrors.price}
+              onChange={(event) => handleCatalogFieldChange('price', event.currentTarget.value)}
+            />
+            <Select
+              label="Валюта"
+              value={catalogForm.currency}
+              data={currencyOptions}
+              allowDeselect={false}
+              error={catalogFormErrors.currency}
+              onChange={(value) => value && handleCatalogFieldChange('currency', value)}
+            />
+          </SimpleGrid>
+
           <Textarea
             label="Описание"
             minRows={3}
+            autosize
             value={catalogForm.description}
+            error={catalogFormErrors.description}
             onChange={(event) =>
               handleCatalogFieldChange('description', event.currentTarget.value)
             }
           />
-          <Select
-            label="Редкость"
-            value={catalogForm.rarity}
-            data={rarityOptions}
-            allowDeselect={false}
-            onChange={(value) => value && handleCatalogFieldChange('rarity', value)}
-          />
-          <Select
-            label="Категория"
-            value={catalogForm.type}
-            data={typeOptions}
-            allowDeselect={false}
-            onChange={(value) => value && handleCatalogFieldChange('type', value)}
-          />
-          <TextInput
-            label="Цена"
-            type="number"
-            value={catalogForm.price.toString()}
-            onChange={(event) => handleCatalogFieldChange('price', event.currentTarget.value)}
-          />
-          <Select
-            label="Валюта"
-            value={catalogForm.currency}
-            data={currencyOptions}
-            allowDeselect={false}
-            onChange={(value) => value && handleCatalogFieldChange('currency', value)}
-          />
+
           <Group justify="flex-end">
-            <Button variant="default" onClick={close}>
+            <Button variant="default" onClick={resetCatalogModalState}>
               Отмена
             </Button>
             <Button onClick={() => void handleSubmitCatalogForm()} loading={isSaving}>
@@ -249,6 +369,13 @@ const AdminPage = () => {
             <Text c="dimmed">
               Управление пользователями и каталогом магазина из одного интерфейса.
             </Text>
+            <Badge
+              mt="sm"
+              variant="light"
+              color={currentUser?.role === 'SUPER_ADMIN' ? 'red' : 'orange'}
+            >
+              Ваша роль: {currentRoleLabel}
+            </Badge>
           </div>
           <Group>
             <Button
@@ -347,13 +474,19 @@ const AdminPage = () => {
                         <Table.Td>{user.email}</Table.Td>
                         <Table.Td>{dayjs(user.createdAt).format('DD.MM.YYYY')}</Table.Td>
                         <Table.Td>
-                          <Select
-                            data={roleOptions}
-                            value={ensureRoleValue(user.id)}
-                            onChange={(value) => handleRoleSelect(user.id, value)}
-                            allowDeselect={false}
-                            disabled={currentUser?.id === user.id}
-                          />
+                          {user.role === 'SUPER_ADMIN' ? (
+                            <Badge color="red" variant="light">
+                              {getRoleLabel(user.role)}
+                            </Badge>
+                          ) : (
+                            <Select
+                              data={roleOptions}
+                              value={ensureRoleValue(user.id)}
+                              onChange={(value) => handleRoleSelect(user.id, value)}
+                              allowDeselect={false}
+                              disabled={!canEditRole(user)}
+                            />
+                          )}
                         </Table.Td>
                         <Table.Td>
                           <Button
@@ -362,9 +495,9 @@ const AdminPage = () => {
                               void updateUserRole(user.id, ensureRoleValue(user.id))
                             }
                             loading={isSaving}
-                            disabled={currentUser?.id === user.id}
+                            disabled={!canEditRole(user)}
                           >
-                            {currentUser?.id === user.id ? 'Недоступно' : 'Сохранить'}
+                            {!canEditRole(user) ? 'Недоступно' : 'Сохранить'}
                           </Button>
                         </Table.Td>
                       </Table.Tr>

@@ -1,63 +1,71 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Req, UseGuards } from "@nestjs/common";
-import { AdminService } from "./admin.service";
-import { Roles } from "../../common/roles.decorator";
-import { ApiBearerAuth } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../auth/jwt-auth.guard";
-import { RolesGuard } from "../../common/roles.guard";
-import { Role } from "@prisma/client";
-import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
-import { CreateCatalogItemDto } from "./dto/create-catalog-item.dto";
-import { UpdateCatalogItemDto } from "./dto/update-catalog-item.dto";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
+import { Roles } from '../../common/roles.decorator';
+import { RolesGuard } from '../../common/roles.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminService } from './admin.service';
+import { CreateCatalogItemDto } from './dto/create-catalog-item.dto';
+import { UpdateCatalogItemDto } from './dto/update-catalog-item.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('admin')
 export class AdminController {
-    constructor(private readonly adminService: AdminService) {}
-    
-    @Get('catalog')
-    getItems() {
-        return this.adminService.findAllCatalogItems()
-    }
+  constructor(private readonly adminService: AdminService) {}
 
-    @Get('users')
-    getUsers(){
-        return this.adminService.findAllUsers()
-    }
+  @Get('catalog')
+  getItems() {
+    return this.adminService.findAllCatalogItems();
+  }
 
-    @Patch('users/:id')
-    updateUser(
-        @Req() req: { user: { userId: number } },
-        @Param('id', ParseIntPipe) id: number,
-        @Body() dto: UpdateUserRoleDto,
-    ){
-        if (req.user.userId === id) {
-            throw new BadRequestException('Нельзя изменить роль собственного аккаунта');
-        }
+  @Get('users')
+  getUsers() {
+    return this.adminService.findAllUsers();
+  }
 
-        return this.adminService.updateUserRole(id, dto.role); 
-    }
-    
-    @Post('catalog')
-    createCatalogItem(
-        @Body() dto: CreateCatalogItemDto
-    ){
-        return this.adminService.createCatalogItem(dto)
-    }
+  @Patch('users/:id')
+  updateUser(
+    @Req() req: { user: { userId: number; role: Role } },
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUserRoleDto,
+  ) {
+    return this.adminService.updateUserRole({
+      actorId: req.user.userId,
+      actorRole: req.user.role,
+      targetUserId: id,
+      nextRole: dto.role,
+    });
+  }
 
-    @Patch('catalog/:id')
-    updateCatalogItem(
-        @Param('id', ParseIntPipe) id: number,
-        @Body() dto: UpdateCatalogItemDto,
-    ){
-        return this.adminService.updateCatalogItem(id, dto)
-    }
+  @Post('catalog')
+  createCatalogItem(@Body() dto: CreateCatalogItemDto) {
+    return this.adminService.createCatalogItem(dto);
+  }
 
-    @Delete('catalog/:id')
-    deleteCatalogItem(
-        @Param('id', ParseIntPipe) id: number,
-    ){
-        return this.adminService.deleteCatalogItem(id)
-    }
+  @Patch('catalog/:id')
+  updateCatalogItem(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCatalogItemDto,
+  ) {
+    return this.adminService.updateCatalogItem(id, dto);
+  }
+
+  @Delete('catalog/:id')
+  deleteCatalogItem(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.deleteCatalogItem(id);
+  }
 }

@@ -65,7 +65,7 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
         name: categoryNames[type],
         items: catalogItems.filter((item) => item.type === type),
       })),
-    [catalogItems]
+    [catalogItems],
   );
 
   useEffect(() => {
@@ -190,8 +190,8 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
       if (success) {
         setCatalogItems((currentItems) =>
           currentItems.map((item) =>
-            item.id === selectedItem.id ? { ...item, owned: true } : item
-          )
+            item.id === selectedItem.id ? { ...item, owned: true } : item,
+          ),
         );
 
         notifications.show({
@@ -248,7 +248,7 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
               <IconCoin size={20} color="gold" />
               <Text fw={700}>{credits.toLocaleString()}</Text>
               <Text size="xs" c="dimmed">
-                кредитов
+                кредит(ов)
               </Text>
             </Group>
           </Paper>
@@ -257,7 +257,7 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
               <IconDiamond size={20} color="cyan" />
               <Text fw={700}>{gems.toLocaleString()}</Text>
               <Text size="xs" c="dimmed">
-                гемов
+                гем(ов)
               </Text>
             </Group>
           </Paper>
@@ -348,8 +348,7 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
                                     onClick={() => handlePurchase(item)}
                                     disabled={!affordable}
                                   >
-                                    {item.price}{' '}
-                                    {item.currency === 'credits' ? 'кредитов' : 'гемов'}
+                                    {item.price} {item.currency === 'credits' ? 'кредит(ов)' : 'гем(ов)'}
                                   </Button>
                                 </Tooltip>
                               )}
@@ -398,7 +397,7 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
                 )}
                 <Text fw={700}>{selectedItem.price.toLocaleString()}</Text>
                 <Text size="xs" c="dimmed">
-                  {selectedItem.currency === 'credits' ? 'кредитов' : 'гемов'}
+                  {selectedItem.currency === 'credits' ? 'кредит(ов)' : 'гем(ов)'}
                 </Text>
               </Group>
             </Group>

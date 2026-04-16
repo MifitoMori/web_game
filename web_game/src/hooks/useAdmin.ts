@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { createElement, useCallback, useEffect, useState } from 'react';
+import { Button, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 
-export type AdminRole = 'USER' | 'ADMIN';
+export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 
 export type AdminUserListItem = {
   id: number;
@@ -80,6 +81,16 @@ const extractErrorMessage = async (response: Response) => {
   return response.statusText || 'Request failed';
 };
 
+const toCatalogPayload = (item: AdminCatalogItem): AdminCatalogPayload => ({
+  slug: item.slug,
+  name: item.name,
+  description: item.description,
+  rarity: item.rarity,
+  type: item.type,
+  price: item.price,
+  currency: item.currency,
+});
+
 export const useAdmin = (): UseAdminReturn => {
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [catalogItems, setCatalogItems] = useState<AdminCatalogItem[]>([]);
@@ -102,6 +113,44 @@ export const useAdmin = (): UseAdminReturn => {
     return (await response.json()) as T;
   }, []);
 
+  const showUndoNotification = useCallback(
+    (params: {
+      title: string;
+      message: string;
+      color: string;
+      onUndo: () => Promise<void>;
+    }) => {
+      const id = `admin-undo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      notifications.show({
+        id,
+        title: params.title,
+        color: params.color,
+        autoClose: 10000,
+        withCloseButton: true,
+        message: createElement(
+          Stack,
+          { gap: 6 },
+          createElement(Text, { size: 'sm' }, params.message),
+          createElement(
+            Button,
+            {
+              size: 'compact-xs',
+              variant: 'light',
+              w: 'fit-content',
+              onClick: () => {
+                notifications.hide(id);
+                void params.onUndo();
+              },
+            },
+            'Отменить',
+          ),
+        ),
+      });
+    },
+    [],
+  );
+
   const refreshData = useCallback(async () => {
     setIsLoading(true);
 
@@ -116,7 +165,8 @@ export const useAdmin = (): UseAdminReturn => {
     } catch (error) {
       notifications.show({
         title: 'Ошибка',
-        message: error instanceof Error ? error.message : 'Не удалось загрузить админ-панель',
+        message:
+          error instanceof Error ? error.message : 'Не удалось загрузить админ-панель',
         color: 'red',
       });
     } finally {
@@ -129,6 +179,8 @@ export const useAdmin = (): UseAdminReturn => {
   }, [refreshData]);
 
   const updateUserRole = async (userId: number, role: AdminRole) => {
+    const previousUser = users.find((user) => user.id === userId);
+
     setIsSaving(true);
 
     try {
@@ -137,13 +189,37 @@ export const useAdmin = (): UseAdminReturn => {
         body: JSON.stringify({ role }),
       });
 
-      notifications.show({
-        title: 'Роль обновлена',
-        message: 'Изменения для пользователя сохранены',
-        color: 'green',
-      });
-
       await refreshData();
+
+      showUndoNotification({
+        title: 'Роль обновлена',
+        message: `Роль пользователя ${previousUser?.login ?? `#${userId}`} изменена`,
+        color: 'green',
+        onUndo: async () => {
+          if (!previousUser) {
+            return;
+          }
+
+          setIsSaving(true);
+
+          try {
+            await fetchJson(`/api/admin/users/${userId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ role: previousUser.role }),
+            });
+
+            await refreshData();
+
+            notifications.show({
+              title: 'Изменение отменено',
+              message: `Роль пользователя ${previousUser.login} восстановлена`,
+              color: 'blue',
+            });
+          } finally {
+            setIsSaving(false);
+          }
+        },
+      });
     } finally {
       setIsSaving(false);
     }
@@ -160,10 +236,29 @@ export const useAdmin = (): UseAdminReturn => {
 
       setCatalogItems((current) => [...current, createdItem].sort((a, b) => a.id - b.id));
 
-      notifications.show({
+      showUndoNotification({
         title: 'Товар добавлен',
         message: `В каталог добавлен "${createdItem.name}"`,
         color: 'green',
+        onUndo: async () => {
+          setIsSaving(true);
+
+          try {
+            await fetchJson(`/api/admin/catalog/${createdItem.id}`, {
+              method: 'DELETE',
+            });
+
+            setCatalogItems((current) => current.filter((item) => item.id !== createdItem.id));
+
+            notifications.show({
+              title: 'Добавление отменено',
+              message: `Товар "${createdItem.name}" удален из каталога`,
+              color: 'blue',
+            });
+          } finally {
+            setIsSaving(false);
+          }
+        },
       });
     } finally {
       setIsSaving(false);
@@ -171,6 +266,8 @@ export const useAdmin = (): UseAdminReturn => {
   };
 
   const updateCatalogItem = async (id: number, payload: Partial<AdminCatalogPayload>) => {
+    const previousItem = catalogItems.find((item) => item.id === id);
+
     setIsSaving(true);
 
     try {
@@ -179,14 +276,38 @@ export const useAdmin = (): UseAdminReturn => {
         body: JSON.stringify(payload),
       });
 
-      setCatalogItems((current) =>
-        current.map((item) => (item.id === id ? updatedItem : item)),
-      );
+      setCatalogItems((current) => current.map((item) => (item.id === id ? updatedItem : item)));
 
-      notifications.show({
+      showUndoNotification({
         title: 'Товар обновлен',
         message: `Изменения для "${updatedItem.name}" сохранены`,
         color: 'green',
+        onUndo: async () => {
+          if (!previousItem) {
+            return;
+          }
+
+          setIsSaving(true);
+
+          try {
+            const restoredItem = await fetchJson<AdminCatalogItem>(`/api/admin/catalog/${id}`, {
+              method: 'PATCH',
+              body: JSON.stringify(toCatalogPayload(previousItem)),
+            });
+
+            setCatalogItems((current) =>
+              current.map((item) => (item.id === id ? restoredItem : item)),
+            );
+
+            notifications.show({
+              title: 'Изменение отменено',
+              message: `Данные товара "${restoredItem.name}" восстановлены`,
+              color: 'blue',
+            });
+          } finally {
+            setIsSaving(false);
+          }
+        },
       });
     } finally {
       setIsSaving(false);
@@ -203,10 +324,30 @@ export const useAdmin = (): UseAdminReturn => {
 
       setCatalogItems((current) => current.filter((item) => item.id !== id));
 
-      notifications.show({
+      showUndoNotification({
         title: 'Товар удален',
         message: `Из каталога удален "${deletedItem.name}"`,
         color: 'yellow',
+        onUndo: async () => {
+          setIsSaving(true);
+
+          try {
+            const restoredItem = await fetchJson<AdminCatalogItem>('/api/admin/catalog', {
+              method: 'POST',
+              body: JSON.stringify(toCatalogPayload(deletedItem)),
+            });
+
+            setCatalogItems((current) => [...current, restoredItem].sort((a, b) => a.id - b.id));
+
+            notifications.show({
+              title: 'Удаление отменено',
+              message: `Товар "${restoredItem.name}" восстановлен`,
+              color: 'blue',
+            });
+          } finally {
+            setIsSaving(false);
+          }
+        },
       });
 
       return deletedItem;
