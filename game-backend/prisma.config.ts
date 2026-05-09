@@ -9,6 +9,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: "postgresql://postgres:1@localhost:5432/game_backend?schema=public",
   },
 });
