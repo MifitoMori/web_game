@@ -2,7 +2,8 @@
   "name": "project",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n frontend,backend -c blue,green \"npm --prefix web_game run dev\" \"npm --prefix game-backend run start:dev\"",
+    "dev": "concurrently -n client,frontend,backend -c red,blue,green \"npm run dev:client\" \"npm --prefix web_game run dev\" \"npm --prefix game-backend run start:dev\"",
+    "dev:client": "npx http-server ./game_client",
     "dev:frontend": "npm --prefix web_game run dev",
     "dev:backend": "npm --prefix game-backend run start:dev",
     "build": "npm --prefix game-backend run build && npm --prefix web_game run build"

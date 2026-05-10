@@ -86,24 +86,4 @@ export default class HUD {
         const alpha = Phaser.Geom.Intersects.RectangleToRectangle(playerBounds, panelBounds) ? 0.3 : 1;
         this.elements.forEach(el => el.setAlpha(alpha));
     }
-    
-    showGameOver(isVictory) {
-        const container = document.createElement('div');
-        container.className = 'game-over-container';
-        
-        const title = document.createElement('h1');
-        title.textContent = isVictory ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ!';
-        title.style.color = isVictory ? '#33ff33' : '#ff3333';
-        
-        const button = document.createElement('button');
-        button.textContent = 'Играть снова';
-        button.onclick = () => {
-            container.remove();
-            this.scene.scene.restart();
-        };
-        
-        container.appendChild(title);
-        container.appendChild(button);
-        document.body.appendChild(container);
-    }
 }

@@ -373,27 +373,24 @@ export default class GameScene extends Phaser.Scene {
 
     gameVictory() {
         this.gameOver = true;
-        this.hud.showGameOver(true);
         this.physics.pause();
         
-        // Отправляем результат
         if (window.parent !== window) {
             window.parent.postMessage({
-            type: 'GAME_END',
-            data: { result: 'victory', kills: 1, time: 0 }
+                type: 'GAME_END',
+                data: { result: 'victory', kills: 1, time: 0 }
             }, '*');
         }
     }
-    
+
     gameDefeat() {
         this.gameOver = true;
-        this.hud.showGameOver(false);
         this.physics.pause();
-    
+        
         if (window.parent !== window) {
             window.parent.postMessage({
-            type: 'GAME_END',
-            data: { result: 'defeat', kills: 0, time: 0 }
+                type: 'GAME_END',
+                data: { result: 'defeat', kills: 0, time: 0 }
             }, '*');
         }
     }
