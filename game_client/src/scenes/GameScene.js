@@ -17,6 +17,8 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('player', 'assets/kenney/player_battle.png');
         this.load.image('bullet', 'assets/kenney/bullet_gun.png');
         this.load.image('weapon', 'assets/kenney/weapon_gun.png');
+        this.load.image('weapon_silencer', 'assets/kenney/weapon_silencer.png');
+        this.load.image('weapon_machine', 'assets/kenney/weapon_machine.png');
         this.load.image('enemy_hold', 'assets/kenney/robot1_hold.png');
         this.load.image('enemy', 'assets/kenney/robot_battle.png');
         this.load.image('tile_01', 'assets/kenney/tile_01.png');
@@ -48,6 +50,10 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
+        console.log("Попытка установить курсор");
+        
+        this.input.setDefaultCursor("url('assets/kenney/aim.png'), auto");
+
         this.setupWorld();
 
         this.setupWalls();
@@ -102,6 +108,10 @@ export default class GameScene extends Phaser.Scene {
         this.enemy.body.setImmovable(false);
 
         this.cameras.main.update();
+
+        this.isInputLocked = false; 
+
+        this.setupExitHandler();
     }
 
     setupWorld() {
@@ -393,6 +403,58 @@ export default class GameScene extends Phaser.Scene {
                 data: { result: 'defeat', kills: 0, time: 0 }
             }, '*');
         }
+    }
+
+    setupExitHandler() {
+        // Обработчик нажатия ESC
+        this.input.keyboard.on('keydown-ESC', () => {
+            if (!this.gameOver) {
+                if (!this.isInputLocked) {
+                    this.lockPlayerControl();
+                } else {
+                    this.unlockPlayerControl();
+                }
+            }
+        });
+        
+        // Слушаем сообщения от родительского окна
+        window.addEventListener('message', (event) => {
+            if (event.origin !== window.location.origin) return;
+            
+            if (event.data.type === 'RESUME_GAME') {
+                this.unlockPlayerControl();
+            }
+        });
+    }
+
+    lockPlayerControl() {
+        if (this.isInputLocked) return;
+        
+        this.isInputLocked = true;
+        
+        // Останавливаем движение игрока
+        if (this.player && this.player.body) {
+            this.player.body.setVelocity(0, 0);
+        }
+        
+        // Показываем модальное окно
+        if (window.parent !== window) {
+            window.parent.postMessage({
+                type: 'SHOW_EXIT_MODAL',
+                data: {}
+            }, '*');
+        }
+    }
+
+    unlockPlayerControl() {
+        if (!this.isInputLocked) return;
+        
+        this.isInputLocked = false;
+        
+        // Отправляем сообщение о закрытии модалки (если нужно)
+        // Модалка уже закрыта из React
+        
+        // Управление восстанавливается автоматически в update()
     }
 
     update() {

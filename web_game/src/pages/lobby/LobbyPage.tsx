@@ -15,9 +15,11 @@ import {
   Text,
   TextInput,
   Title,
+  Loader,
+  Center,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconLock, IconPlayerPlay, IconUsers } from '@tabler/icons-react';
+import { IconLock, IconPlayerPlay, IconUsers, IconSearch, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import FriendsList from '@components/lobby/FriendsList/FriendsList';
 import PlayerStatus from '@components/lobby/PlayerStatus/PlayerStatus';
@@ -70,15 +72,8 @@ const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { credits, gems, isProfileReady, profileData, purchaseItem } = useProfile();
-  const [opened, { open, close }] = useDisclosure(false);
   const [gameMode, setGameMode] = useState<'solo' | 'multi'>('solo');
-  const [gameSettings, setGameSettings] = useState({
-    boardSize: '15x15',
-    speed: 'normal',
-    walls: false,
-    powerUps: true,
-    private: false,
-  });
+  const [searching, setSearching] = useState(false);
 
   const handlePlay = () => {
     if (gameMode === 'solo') {
@@ -86,16 +81,17 @@ const LobbyPage: React.FC = () => {
       return;
     }
 
-    open();
+    // Режим мультиплеера - начинаем поиск
+    startSearching();
   };
 
-  const handleCreateGame = () => {
-    notifications.show({
-      title: 'Игра создана',
-      message: 'Ожидание игроков...',
-      color: 'green',
-    });
-    close();
+  const startSearching = () => {
+    setSearching(true);
+    
+  };
+
+  const cancelSearch = () => {
+    setSearching(false);
   };
 
   const player = profileData
@@ -120,51 +116,51 @@ const LobbyPage: React.FC = () => {
 
   return (
     <Container size="xl" py="md" className={classes.lobbyContainer}>
-      <Modal opened={opened} onClose={close} title="Создание игры" size="lg">
-        <Stack>
-          <Select
-            label="Режим игры"
-            placeholder="Выберите режим"
-            data={[
-              { value: 'classic', label: 'Игра с другом' },
-              { value: 'bot_game', label: 'Игра с компьютером' },
-            ]}
-          />
-
-          <Switch
-            label="Стены на поле"
-            checked={gameSettings.walls}
-            onChange={(event) =>
-              setGameSettings({ ...gameSettings, walls: event.currentTarget.checked })
-            }
-          />
-
-          <Switch
-            label="Бонусы"
-            checked={gameSettings.powerUps}
-            onChange={(event) =>
-              setGameSettings({ ...gameSettings, powerUps: event.currentTarget.checked })
-            }
-          />
-
-          <Divider />
-
-          {gameSettings.private && (
-            <TextInput
-              label="Пароль"
-              placeholder="Введите пароль"
-              type="password"
-              leftSection={<IconLock size={16} />}
+      {/* Модальное окно поиска игрока */}
+      <Modal
+        opened={searching}
+        onClose={cancelSearch}
+        withCloseButton={false}
+        closeOnClickOutside={false}
+        closeOnEscape={false}
+        size="md"
+        centered
+        padding="xl"
+      >
+        <Center style={{ flexDirection: 'column', gap: '30px', minHeight: '200px' }}>
+          <div style={{ position: 'relative' }}>
+            <Loader size="xl" variant="dots" />
+            <IconSearch 
+              size={30} 
+              style={{ 
+                position: 'absolute', 
+                top: '43%', 
+                left: '47%', 
+                transform: 'translate(-50%, -50%)',
+                opacity: 0.5
+              }} 
             />
-          )}
-
-          <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={close}>
-              Отмена
-            </Button>
-            <Button onClick={handleCreateGame}>Создать игру</Button>
-          </Group>
-        </Stack>
+          </div>
+          
+          <Stack align="center" gap="xs">
+            <Title order={3} ta="center">Поиск соперника</Title>
+            <Text size="sm" c="dimmed" ta="center">
+              Ищём доступного игрока...
+            </Text>
+            <Text size="xs" c="dimmed" ta="center">
+              Это может занять некоторое время
+            </Text>
+          </Stack>
+          
+          <Button 
+            variant="light" 
+            color="red" 
+            onClick={cancelSearch}
+            leftSection={<IconX size={18} />}
+          >
+            Отменить поиск
+          </Button>
+        </Center>
       </Modal>
 
       <Grid gutter="md">
@@ -235,6 +231,7 @@ const LobbyPage: React.FC = () => {
               gradient={{ from: 'teal', to: 'lime' }}
               leftSection={<IconPlayerPlay size={28} />}
               onClick={handlePlay}
+              disabled={searching}
             >
               {gameMode === 'solo' ? 'Начать игру' : 'Найти игру'}
             </Button>

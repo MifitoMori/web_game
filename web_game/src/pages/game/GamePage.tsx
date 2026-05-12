@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Modal, Text, Stack, Group, Loader, Center } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
+import { Button, Text, Center, Loader } from '@mantine/core';
 
 const GAME_URL = 'http://localhost:8080';
 
@@ -24,18 +23,20 @@ const GamePage: React.FC = () => {
         setGameResult(data.result);
         setShowExitModal(true);
       }
+      
+      if (type === 'SHOW_EXIT_MODAL') {
+        setShowExitModal(true);
+      }
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Блокируем клики по iframe когда модалка открыта
+  // НЕ блокируем iframe - игра продолжает работать
   useEffect(() => {
-    if (showExitModal && iframeRef.current) {
-      // Блокируем pointer-events у iframe
-      iframeRef.current.style.pointerEvents = 'none';
-    } else if (iframeRef.current) {
+    // Убираем блокировку pointer-events - игроки могут играть даже с открытой модалкой
+    if (iframeRef.current) {
       iframeRef.current.style.pointerEvents = 'auto';
     }
   }, [showExitModal]);
@@ -53,6 +54,16 @@ const GamePage: React.FC = () => {
     }
   };
 
+  const handleResumeGame = () => {
+    setShowExitModal(false);
+    // Отправляем сообщение в игру о закрытии модалки
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({
+        type: 'RESUME_GAME'
+      }, 'http://localhost:8080');
+    }
+  };
+
   const handleRetry = () => {
     setLoadError(false);
     setIsLoading(true);
@@ -66,37 +77,20 @@ const GamePage: React.FC = () => {
       <Center style={{ height: '100vh', flexDirection: 'column', gap: '20px' }}>
         <Text size="xl" c="red">Не удалось загрузить игру</Text>
         <Text c="dimmed">Убедитесь, что игровой сервер запущен на {GAME_URL}</Text>
-        <Group>
+        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
           <Button onClick={handleRetry} variant="light">
             Попробовать снова
           </Button>
           <Button onClick={() => navigate('/lobby')} variant="subtle">
             Вернуться в лобби
           </Button>
-        </Group>
+        </div>
       </Center>
     );
   }
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}>
-      <div style={{
-        position: 'absolute',
-        top: 20,
-        right: 20,
-        zIndex: 20,
-      }}>
-        <Button 
-          variant="filled" 
-          color="red" 
-          size="sm"
-          onClick={() => setShowExitModal(true)}
-          style={{ opacity: 0.8, backdropFilter: 'blur(5px)' }}
-        >
-          ✕ Выйти из игры
-        </Button>
-      </div>
-
       {isLoading && (
         <Center style={{ 
           position: 'absolute', 
@@ -119,7 +113,7 @@ const GamePage: React.FC = () => {
           height: '100%',
           border: 'none',
           display: isLoading ? 'none' : 'block',
-          pointerEvents: showExitModal ? 'none' : 'auto' // Блокируем iframe когда модалка открыта
+          pointerEvents: 'auto', // Всегда auto - игра работает
         }}
         title="Game"
         allow="fullscreen"
@@ -135,7 +129,7 @@ const GamePage: React.FC = () => {
         }}
       />
 
-      {/* Модальное окно - полностью блокирующее */}
+      {/* Модальное окно - НЕ блокирует игру */}
       {showExitModal && (
         <div
           style={{
@@ -144,16 +138,16 @@ const GamePage: React.FC = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-            backdropFilter: 'blur(5px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(3px)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'default',
+            pointerEvents: 'auto', // Модалка перехватывает клики
           }}
           onClick={(e) => {
-            // Блокируем любые клики по фону
             e.preventDefault();
             e.stopPropagation();
           }}
@@ -175,7 +169,6 @@ const GamePage: React.FC = () => {
               cursor: 'default',
             }}
             onClick={(e) => {
-              // Предотвращаем всплытие
               e.stopPropagation();
             }}
           >
@@ -199,7 +192,6 @@ const GamePage: React.FC = () => {
                     onClick={handleRestart} 
                     color="blue" 
                     size="lg"
-                    style={{ minWidth: '150px' }}
                   >
                     Играть снова
                   </Button>
@@ -208,7 +200,6 @@ const GamePage: React.FC = () => {
                     variant="subtle" 
                     size="lg"
                     color="gray"
-                    style={{ minWidth: '150px' }}
                   >
                     Выйти в лобби
                   </Button>
@@ -217,29 +208,26 @@ const GamePage: React.FC = () => {
             ) : (
               <>
                 <Text size="32px" style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '20px', color: '#ffaa00' }}>
-                  Выйти из игры?
+                  МЕНЮ
                 </Text>
-                <Text style={{ marginBottom: '15px', color: '#fff' }}>
-                  Вы уверены, что хотите выйти из игры?
-                </Text>
-                <Text size="sm" style={{ marginBottom: '30px', color: '#888' }}>
-                  Прогресс текущей игры будет потерян.
+                <Text size="sm" style={{ marginBottom: '30px', color: '#aaa' }}>
+                  Игра продолжается
                 </Text>
                 <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
                   <Button 
-                    onClick={() => setShowExitModal(false)} 
-                    variant="subtle" 
+                    onClick={handleResumeGame} 
+                    color="blue" 
                     size="lg"
-                    color="blue"
                   >
-                    Продолжить игру
+                    Закрыть
                   </Button>
                   <Button 
                     onClick={handleExit} 
-                    color="red" 
+                    variant="subtle" 
                     size="lg"
+                    color="red"
                   >
-                    Выйти
+                    Выйти в лобби
                   </Button>
                 </div>
               </>
