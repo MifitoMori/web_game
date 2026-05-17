@@ -14,5 +14,5 @@
 
 ```bash
 # Клонируем репозиторий (ветка develop_game)
-git clone -b develop_game https://github.com/YOUR_USERNAME/REPO_NAME.git
+git clone -b develop_game https://github.com/MifitoMori/web_game/blob/main
 cd REPO_NAME
