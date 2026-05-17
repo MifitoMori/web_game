@@ -116,26 +116,6 @@ ESC — меню
 Веб-клиент	React, TypeScript, Mantine UI, Vite
 Контейнеризация	Docker, Docker Compose
 
-### Структура проекта
-
-text
-project/
-├── game-backend/          # NestJS сервер
-│   ├── src/modules/
-│   │   ├── auth/          # JWT авторизация
-│   │   ├── game/          # WebSocket + матчмейкинг
-│   │   ├── shop/          # Магазин предметов
-│   │   └── users/         # Пользователи
-│   └── prisma/            # Миграции БД
-├── game_client/           # Phaser игра
-│   ├── assets/            # Спрайты и текстуры
-│   └── src/
-│       ├── scenes/        # GameScene, HUD
-│       └── entities/      # Player, Enemy
-└── web_game/              # React приложение
-    ├── src/pages/         # Лобби, игра, профиль
-    └── src/components/    # UI компоненты
-    
 ### Возможные проблемы
 
 Порты уже заняты
