@@ -1,16 +1,23 @@
-# Top-Down Shooter — Мультиплеерная игра
+# Web Game
 
 Мультиплеерный топ-даун шутер с системой матчмейкинга, магазином скинов и прогрессией игрока.
 
-## Системные требования
+Проект состоит из трех частей:
 
-- Node.js (версия 18 или выше)
+- `game-backend` - backend на NestJS, Prisma и PostgreSQL.
+- `web_game` - основной frontend на React.
+- `game_client` - игровой клиент на Phaser.
+
+## Требования
+
+Перед запуском требуется установить:
+
 - PostgreSQL (версия 14 или выше)
-- npm (версия 9 или выше)
+- Node.js (20 или новее)
+- npm
+- Docker
 
-## Установка и запуск
-
-### 1. Клонирование репозитория
+### Клонирование репозитория
 
 ```bash
 # Клонируем репозиторий (ветка develop_game)
@@ -18,71 +25,64 @@ git clone -b develop_game https://github.com/MifitoMori/web_game.git
 cd web_game
 ```
 
-# Если вы уже склонировали репозиторий без указания ветки:
+## Установка зависимостей
+
+Из корня проекта выполните:
 
 ```bash
-git checkout develop_game
-git pull origin develop_game
+npm install
+npm --prefix game-backend install
+npm --prefix web_game install
+npm --prefix game_client install
 ```
 
-### 2. Настройка базы данных (Docker)
+## Настройка backend
 
-```bash
-# Запускаем PostgreSQL в Docker-контейнере
-docker-compose up -d
-
-# Или если Docker не установлен, используйте локальный PostgreSQL
-# Создайте базу данных с именем game_backend
-```
-
-### 3. Установка зависимостей
-
-```bash
-# Устанавливаем зависимости для бэкенда
-cd game-backend
-npm install
-
-# Возвращаемся в корень проекта
-cd ..
-
-# Переходим в директорию с игровым клиентом
-cd game_client
-npm install
-
-# Возвращаемся в корень
-cd ..
-
-# Переходим в веб-клиент (React)
-cd web_game
-npm install
-```
-
-### 4. Настройка переменных окружения
-Создайте файл .env в папке game-backend:
+Создайте файл `game-backend/.env`:
 
 ```env
 DATABASE_URL="postgresql://postgres:1@localhost:5432/game_backend?schema=public"
-JWT_SECRET="your-secret-key-here"
-JWT_REFRESH_SECRET="your-refresh-secret-key-here"
+JWT_SECRET="dev-secret-key"
 PORT=3001
 ```
 
-### 5. Миграции базы данных
+## Запуск базы данных
+
+Запустите:
+
 ```bash
 cd game-backend
-
-# Применяем миграции
-npx prisma migrate deploy
-
-# Заполняем базу начальными данными (каталог предметов магазина)
-npm run db:seed
+docker compose up -d
 ```
-### 6. Запуск проекта
-Откройте терминал в корне проекта:
+
+Контейнер поднимет базу `game_backend` на порту `5432` с пользователем `postgres` и паролем `1`.
+
+## Миграции и seed
+
+После запуска базы выполните подготовку Prisma:
+
+```bash
+cd game-backend
+npx prisma migrate deploy
+npm run db:setup
+```
+
+Команда генерирует Prisma Client, применяет миграции.
+
+## Запуск проекта
+
+Вернитесь в корень проекта и запустите все части одной командой:
 
 ```bash
 npm run dev
 ```
+
+Будут запущены:
+
+- backend: `http://localhost:3001`
+- Swagger API docs: `http://localhost:3001/api/docs`
+- frontend: `http://localhost:3000`
+- игровой клиент: `http://localhost:8080`
 
 ### Как играть
 
@@ -108,14 +108,6 @@ R — перезарядка
 
 ESC — меню
 
-### Технологический стек
-
-Компонент	Технологии
-Бэкенд	NestJS, Prisma, PostgreSQL, Socket.IO
-Игровой движок	Phaser 3
-Веб-клиент	React, TypeScript, Mantine UI, Vite
-Контейнеризация	Docker, Docker Compose
-
 ### Возможные проблемы
 
 Порты уже заняты
@@ -138,3 +130,26 @@ WebSocket не работает
 Убедитесь, что в браузере нет блокировки WebSocket
 
 При запуске с разных устройств замените localhost на IP-адрес сервера
+
+## Полезные команды
+
+Остановить PostgreSQL:
+
+```bash
+cd game-backend
+docker compose down
+```
+
+Остановить PostgreSQL и удалить локальные данные:
+
+```bash
+cd game-backend
+docker compose down -v
+```
+
+Повторно применить миграции и seed после очистки базы:
+
+```bash
+cd game-backend
+npm run db:setup
+```
