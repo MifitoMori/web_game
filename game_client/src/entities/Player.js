@@ -102,12 +102,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         });
     }
     
-    update(cursors, wasd, mousePressed, pointer) {
-
-        if (this.scene.isInputLocked){
-            return;
-        }
-        
+    update(cursors, wasd, mousePressed, pointer) {        
         // Обновление кулдауна дэша
         if (this.dashCooldown > 0) {
             this.dashCooldown -= 16;

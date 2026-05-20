@@ -6,6 +6,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ShopModule } from './modules/shop/shop.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { GameModule } from './modules/game/game.module';
+import { NetworkModule } from './modules/network/network.module';
 
 @Module({
   imports: [
@@ -17,7 +19,9 @@ import { AdminModule } from './modules/admin/admin.module';
     AuthModule,
     UsersModule,
     ShopModule,
-    AdminModule
+    AdminModule,
+    NetworkModule,
+    GameModule
   ],
 })
 export class AppModule {}

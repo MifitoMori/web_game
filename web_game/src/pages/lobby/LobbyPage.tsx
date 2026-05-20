@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -27,6 +27,7 @@ import Shop from '@components/lobby/Shop/Shop';
 import { useAuth } from '@hooks/useAuth';
 import { useProfile } from '@hooks/useProfile';
 import type { Friend, PlayerStats } from '@app-types/lobby';
+import { io, Socket } from 'socket.io-client';
 import classes from './LobbyPage.module.css';
 
 const mockFriends: Friend[] = [
@@ -68,30 +69,181 @@ const mockFriends: Friend[] = [
   },
 ];
 
+// Сервис для определения IP
+class NetworkService {
+  private static instance: NetworkService;
+  private serverIp: string = 'localhost';
+
+  static getInstance(): NetworkService {
+    if (!NetworkService.instance) {
+      NetworkService.instance = new NetworkService();
+    }
+    return NetworkService.instance;
+  }
+
+  async getServerIp(): Promise<string> {
+    try {
+      const response = await fetch('/api/network/ip');
+      const data = await response.json();
+      this.serverIp = data.ip || 'localhost';
+      console.log('Server IP detected:', this.serverIp);
+      return this.serverIp;
+    } catch (error) {
+      console.warn('Failed to detect server IP, using localhost');
+      return 'localhost';
+    }
+  }
+
+  async getWebSocketUrl(): Promise<string> {
+    const ip = await this.getServerIp();
+    return `http://${ip}:3001/game`;
+  }
+}
+
 const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { credits, gems, isProfileReady, profileData, purchaseItem } = useProfile();
   const [gameMode, setGameMode] = useState<'solo' | 'multi'>('solo');
   const [searching, setSearching] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [serverIp, setServerIp] = useState<string>('localhost');
 
-  const handlePlay = () => {
-    if (gameMode === 'solo') {
-      navigate('/game');
-      return;
-    }
+  // Подключение к WebSocket при монтировании компонента
+  useEffect(() => {
+    const initNetwork = async () => {
+      const networkService = NetworkService.getInstance();
+      const ip = await networkService.getServerIp();
+      setServerIp(ip);
+      
+      const wsUrl = await networkService.getWebSocketUrl();
+      console.log('Connecting to WebSocket:', wsUrl);
+      
+      const newSocket = io(wsUrl, {
+        transports: ['websocket'],
+        autoConnect: false,
+      });
+      
+      setSocket(newSocket);
+    };
+    
+    initNetwork();
+    
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, []);
 
-    // Режим мультиплеера - начинаем поиск
-    startSearching();
-  };
+  // Обработчики WebSocket событий
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleWaitingForPlayer = () => {
+      console.log('Ожидание соперника...');
+    };
+
+    const handleMatchFound = (data: any) => {
+      console.log('Соперник найден!', data);
+      setSearching(false);
+      
+      notifications.show({
+        title: 'Соперник найден!',
+        message: `Игра против ${data.opponent.nickname}`,
+        color: 'green',
+      });
+      
+      // Переходим в игру с параметрами мультиплеера
+      navigate('/game', { 
+        state: { 
+          isMultiplayer: true,
+          roomId: data.roomId,
+          opponent: data.opponent,
+          playerId: user?.id,
+          playerName: profileData?.profile?.username || 'Игрок',
+          serverIp: serverIp
+        }
+      });
+    };
+
+    const handleSearchCancelled = () => {
+      setSearching(false);
+      notifications.show({
+        title: 'Поиск отменён',
+        message: 'Вы отменили поиск соперника',
+        color: 'yellow',
+      });
+    };
+
+    const handleSearchTimeout = () => {
+      setSearching(false);
+      notifications.show({
+        title: 'Поиск не удался',
+        message: 'Не удалось найти соперника. Попробуйте позже.',
+        color: 'red',
+      });
+    };
+
+    socket.on('waitingForPlayer', handleWaitingForPlayer);
+    socket.on('matchFound', handleMatchFound);
+    socket.on('searchCancelled', handleSearchCancelled);
+    socket.on('searchTimeout', handleSearchTimeout);
+
+    return () => {
+      socket.off('waitingForPlayer', handleWaitingForPlayer);
+      socket.off('matchFound', handleMatchFound);
+      socket.off('searchCancelled', handleSearchCancelled);
+      socket.off('searchTimeout', handleSearchTimeout);
+    };
+  }, [socket, navigate, user, profileData, serverIp]);
 
   const startSearching = () => {
+    if (!socket) {
+      notifications.show({
+        title: 'Ошибка',
+        message: 'Не удалось подключиться к серверу',
+        color: 'red',
+      });
+      return;
+    }
+    
     setSearching(true);
     
+    // Подключаемся к сокету, если ещё не подключены
+    if (!socket.connected) {
+      socket.connect();
+    }
+    
+    // Отправляем запрос на поиск матча
+    socket.emit('findMatch', {
+      userId: user?.id,
+      nickname: profileData?.profile?.username || 'Игрок',
+    });
   };
 
   const cancelSearch = () => {
+    if (socket && socket.connected) {
+      socket.emit('cancelSearch');
+    }
     setSearching(false);
+  };
+
+  const handleSoloGame = () => {
+    navigate('/game', { 
+      state: { 
+        isMultiplayer: false,
+        serverIp: serverIp
+      } 
+    });
+  };
+
+  const handlePlay = () => {
+    if (gameMode === 'solo') {
+      handleSoloGame();
+    } else {
+      startSearching();
+    }
   };
 
   const player = profileData

@@ -1,13 +1,46 @@
 import Player from '../entities/Player.js';
 import Enemy from '../entities/Enemy.js';
+import OpponentPlayer from '../entities/OpponentPlayer.js';
 import HUD from '../ui/HUD.js';
 import AmmoPack from '../items/AmmoPack.js';
 import HealthPack from '../items/HealthPack.js';
 import Effects from '../utils/Effects.js'; 
+import { multiplayerSocket } from '../network/socket-client.js';
 
 export default class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
+        this.isMultiplayer = false;
+        this.opponent = null;
+        this.lastSyncTime = 0;
+        this.syncInterval = 50;
+    }
+
+    init(data) {
+        // Читаем параметры из data (переданные через React state)
+        this.isMultiplayer = data?.isMultiplayer || false;
+        this.roomId = data?.roomId || null;
+        this.playerId = data?.playerId || null;
+        this.playerName = data?.playerName || 'Игрок';
+        this.serverIp = data?.serverIp || null;
+        
+
+        if (!this.isMultiplayer) {
+            const urlParams = new URLSearchParams(window.location.search);
+            this.isMultiplayer = urlParams.get('multiplayer') === 'true';
+            this.roomId = urlParams.get('roomId');
+            this.playerId = urlParams.get('playerId') ? parseInt(urlParams.get('playerId')) : null;
+            this.playerName = urlParams.get('playerName') || 'Игрок';
+            this.serverIp = urlParams.get('server');
+        }
+        
+        console.log('GameScene init:', { 
+            isMultiplayer: this.isMultiplayer, 
+            roomId: this.roomId,
+            playerId: this.playerId,
+            playerName: this.playerName,
+            serverIp: this.serverIp
+        });
     }
 
     preload() {
@@ -49,19 +82,24 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('tile_523', 'assets/kenney/decor/tile_523.png');
     }
 
-    create() {
-        console.log("Попытка установить курсор");
-        
+    async create() {
         this.input.setDefaultCursor("url('assets/kenney/aim.png'), auto");
 
         this.setupWorld();
-
         this.setupWalls();
         
         // Создание игрока
-        this.player = new Player(this, 100, this.cameras.main.centerY);        
-        // Создание врага
-        this.enemy = new Enemy(this, this.sys.game.config.width - 100, this.cameras.main.centerY);
+        this.player = new Player(this, 100, this.cameras.main.centerY);      
+          
+        if (this.isMultiplayer) {
+            // Мультиплеерный режим
+            await this.setupMultiplayer();
+        } else {
+            // Соло режим - создаем врага
+            this.enemy = new Enemy(this, this.sys.game.config.width - 100, this.cameras.main.centerY);
+            this.player.body.setImmovable(false);
+            this.enemy.body.setImmovable(false);
+        }
 
         // Создание UI
         this.hud = new HUD(this, this.player);
@@ -97,28 +135,218 @@ export default class GameScene extends Phaser.Scene {
             loop: true
         });
         
-        // Лимит предметов на карте
         this.maxItemsOnMap = 4;
-        
-        // Флаг окончания игры
         this.gameOver = false;
-        
-        // Добавляем отталкивание вручную через update
-        this.player.body.setImmovable(false);
-        this.enemy.body.setImmovable(false);
 
         this.cameras.main.update();
-
-        this.isInputLocked = false; 
-
+        this.isInputLocked = false;
         this.setupExitHandler();
     }
 
-    setupWorld() {
+    async setupMultiplayer() {
+        console.log('Запуск мультиплеерного режима');
+    
+        if (typeof io === 'undefined') {
+            console.error('Socket.IO не загружен!');
+            this.showMessage('Ошибка: Socket.IO не загружен', 3000);
+            return;
+        }
+        
+        try {
+            await multiplayerSocket.connect(this.playerId || 1, this.playerName);
+            console.log('WebSocket подключен');
+            
+            if (this.roomId) {
+                multiplayerSocket.roomId = this.roomId;
+            } else {
+                multiplayerSocket.findMatch();
+                this.showSearchingUI();
+            }
+            
+            this.setupMultiplayerEvents();
+        } catch (error) {
+            console.error('Ошибка подключения к WebSocket:', error);
+            this.showConnectionError();
+        }
+    }
 
+    showSearchingUI() {
+        // Создаем UI для ожидания соперника
+        this.searchingText = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY,
+            '🔍 Поиск соперника...\nОжидание игрока',
+            {
+                fontSize: '28px',
+                fill: '#ffffff',
+                align: 'center',
+                backgroundColor: '#000000aa',
+                padding: { x: 20, y: 15 }
+            }
+        ).setOrigin(0.5).setDepth(1000);
+        
+        // Анимация пульсации
+        this.tweens.add({
+            targets: this.searchingText,
+            alpha: 0.7,
+            duration: 800,
+            yoyo: true,
+            repeat: -1
+        });
+    }
+
+    hideSearchingUI() {
+        if (this.searchingText) {
+            this.searchingText.destroy();
+            this.searchingText = null;
+        }
+    }
+
+    setupMultiplayerEvents() {
+        // Ожидание игрока
+        multiplayerSocket.onWaitingForPlayer((data) => {
+            console.log('Ожидание соперника...', data);
+            if (!this.searchingText) {
+                this.showSearchingUI();
+            }
+        });
+
+        // Матч найден
+        multiplayerSocket.onMatchFound((data) => {
+            console.log('Соперник найден!', data);
+            this.hideSearchingUI();
+            this.roomId = data.roomId;
+            
+            // Создаем оппонента
+            this.opponent = new OpponentPlayer(
+                this,
+                data.opponent.x || this.sys.game.config.width - 150,
+                data.opponent.y || this.cameras.main.centerY,
+                data.opponent.nickname
+            );
+        });
+
+        // Отмена поиска
+        multiplayerSocket.onSearchCancelled(() => {
+            this.hideSearchingUI();
+            this.showMessage('Поиск отменён', 2000);
+        });
+
+        // Обновление позиции оппонента
+        multiplayerSocket.onOpponentUpdate((data) => {
+            if (this.opponent) {
+                this.opponent.updateFromServer(data);
+            }
+        });
+
+        // Выстрел оппонента
+        multiplayerSocket.onOpponentShot((bulletData) => {
+            this.createOpponentBullet(bulletData);
+        });
+
+        // Попадание в оппонента
+        multiplayerSocket.onOpponentHit((data) => {
+            if (this.opponent && data.hitX && data.hitY) {
+                this.opponent.takeDamage(data.damage);
+                this.effects.hitEffect(data.hitX, data.hitY, true);
+            }
+        });
+
+        // Оппонент вышел
+        multiplayerSocket.onOpponentLeft(() => {
+            this.showMessage('Соперник покинул игру', 3000);
+            this.gameDefeat();
+        });
+
+        // Конец игры
+        multiplayerSocket.onGameEnd((data) => {
+            if (data.winnerId === multiplayerSocket.userId) {
+                this.gameVictory();
+            } else {
+                this.gameDefeat();
+            }
+        });
+    }
+
+    createOpponentBullet(bulletData) {
+        const bullet = this.enemyBullets.create(bulletData.x, bulletData.y, 'bullet');
+        bullet.setScale(1);
+        bullet.body.allowGravity = false;
+        bullet.setTint(0xff8888);
+        bullet.rotation = bulletData.angle + 1.6;
+        
+        const bulletSpeed = 350;
+        bullet.body.setVelocity(
+            Math.cos(bulletData.angle) * bulletSpeed,
+            Math.sin(bulletData.angle) * bulletSpeed
+        );
+        
+        // Устанавливаем размер хитбокса
+        if (Math.abs(bulletData.angle) < 0.9) bullet.body.setSize(15, 7, true);
+        else if (Math.abs(bulletData.angle) < 2.3) bullet.body.setSize(7, 15, true);
+        else bullet.body.setSize(15, 7, true);
+        
+        // Проверка попадания в игрока
+        this.physics.add.overlap(bullet, this.player, (b, p) => {
+            b.destroy();
+            p.takeDamage(10);
+            
+            // Отправляем на сервер информацию о попадании
+            multiplayerSocket.socket?.emit('playerHit', {
+                roomId: this.roomId,
+                damage: 10,
+                newHp: p.hp,
+                hitX: p.x,
+                hitY: p.y
+            });
+        });
+        
+        this.time.delayedCall(2000, () => {
+            if (bullet.active) bullet.destroy();
+        });
+    }
+
+    showMessage(text, duration) {
+        const msg = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY - 100,
+            text,
+            {
+                fontSize: '24px',
+                fill: '#ffffff',
+                backgroundColor: '#000000aa',
+                padding: { x: 15, y: 10 }
+            }
+        ).setOrigin(0.5).setDepth(1000);
+        
+        this.time.delayedCall(duration, () => msg.destroy());
+    }
+
+    showConnectionError() {
+        const errorText = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY,
+            'Не удалось подключиться к серверу\nПроверьте запущен ли бэкенд',
+            {
+                fontSize: '24px',
+                fill: '#ff3333',
+                align: 'center',
+                backgroundColor: '#000000aa',
+                padding: { x: 20, y: 15 }
+            }
+        ).setOrigin(0.5).setDepth(1000);
+        
+        // Кнопка возврата
+        this.time.delayedCall(3000, () => {
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'GAME_END', data: { result: 'defeat' } }, '*');
+            }
+        });
+    }
+
+    setupWorld() {
         this.createTileBackground();
         
-        // Границы мира
         const borderSize = 20;
         this.physics.world.setBounds(borderSize, borderSize, 
             this.sys.game.config.width - borderSize * 2, 
@@ -153,55 +381,44 @@ export default class GameScene extends Phaser.Scene {
     }
 
     createTileBackground() {
-        // Загружаем все тайлы
         const tileSize = 64;
         const width = this.sys.game.config.width;
         const height = this.sys.game.config.height;
         
-        // Количество тайлов по горизонтали и вертикали
         const cols = Math.ceil(width / tileSize);
         const rows = Math.ceil(height / tileSize);
         
-        // Массивы тайлов
         const grassTiles = ['tile_01', 'tile_02', 'tile_03', 'tile_04'];
         const sandTiles = ['tile_05', 'tile_06'];
         
-        // Создаем группу для фона (чтобы можно было управлять)
         this.backgroundTiles = this.add.group();
         
-        // Проходим по всем ячейкам сетки
         for (let row = 0; row < rows; row++) {
             for (let col = 0; col < cols; col++) {
                 const x = col * tileSize;
                 const y = row * tileSize;
                 
-                // Выбираем тип тайла в зависимости от позиции
                 let tileKey;
                 
-                // Создаем эффект "пляжа" - песок у границ
                 const isBorder = row < 2 || row > rows - 3 || col < 2 || col > cols - 3;
-                // Создаем случайные "проплешины" песка внутри
+                
                 const isSandPatch = !isBorder && Math.random() < 0.1;
                 
                 if (isBorder || isSandPatch) {
-                    // Песок
+                    
                     const sandIndex = Math.floor(Math.random() * sandTiles.length);
                     tileKey = sandTiles[sandIndex];
                 } else {
-                    // Трава
                     const grassIndex = Math.floor(Math.random() * grassTiles.length);
                     tileKey = grassTiles[grassIndex];
                 }
                 
-                // Создаем тайл
                 const tile = this.add.image(x, y, tileKey);
                 tile.setOrigin(0, 0);
                 tile.setDisplaySize(tileSize, tileSize);
                 this.backgroundTiles.add(tile);
             }
         }
-        
-        // Добавляем декоративные элементы (опционально)
         this.addDecorations();
     }
 
@@ -269,8 +486,16 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.collider(this.playerBullets, this.borderWalls, (bullet) => bullet.destroy());
         this.physics.add.collider(this.enemyBullets, this.borderWalls, (bullet) => bullet.destroy());
 
-        this.physics.add.collider(this.enemy, this.wallSegments);
-        this.physics.add.collider(this.enemy, this.borderWalls);
+        if (this.enemy) {
+            this.physics.add.collider(this.enemy, this.wallSegments);
+            this.physics.add.collider(this.enemy, this.borderWalls);
+            this.physics.add.overlap(this.playerBullets, this.enemy, this.onBulletHitEnemy, null, this);
+        }
+        
+        if (this.opponent) {
+            this.physics.add.collider(this.opponent, this.wallSegments);
+            this.physics.add.collider(this.opponent, this.borderWalls);
+        }
         
         this.physics.add.collider(this.playerBullets, this.wallSegments, (bullet) => bullet.destroy());
         this.physics.add.collider(this.enemyBullets, this.wallSegments, (bullet) => bullet.destroy());
@@ -357,16 +582,6 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    wallSegmentsColloder(player, wallSegment) {
-        const dx = player.x - wallSegment.x;
-        const dy = player.y - wallSegment.y;
-        const angle = Math.atan2(dy, dx);
-        
-        player.x -= Math.cos(angle) * 2;
-        player.y -= Math.sin(angle) * 2;
-    }
-    
-
     onCollectHealth(player, healthPack) {
         this.effects.pickupEffect(healthPack.x, healthPack.y, 'health');
 
@@ -381,9 +596,26 @@ export default class GameScene extends Phaser.Scene {
         this.player.addAmmo(10);
     }
 
+    wallSegmentsColloder(player, wallSegment) {
+        const dx = player.x - wallSegment.x;
+        const dy = player.y - wallSegment.y;
+        const angle = Math.atan2(dy, dx);
+        
+        player.x -= Math.cos(angle) * 2;
+        player.y -= Math.sin(angle) * 2;
+    }
+
     gameVictory() {
         this.gameOver = true;
         this.physics.pause();
+        
+        if (this.isMultiplayer && multiplayerSocket.socket) {
+            multiplayerSocket.socket.emit('playerDeath', {
+                roomId: this.roomId,
+                winnerId: multiplayerSocket.userId
+            });
+            multiplayerSocket.disconnect();
+        }
         
         if (window.parent !== window) {
             window.parent.postMessage({
@@ -396,6 +628,10 @@ export default class GameScene extends Phaser.Scene {
     gameDefeat() {
         this.gameOver = true;
         this.physics.pause();
+        
+        if (this.isMultiplayer && multiplayerSocket.socket) {
+            multiplayerSocket.disconnect();
+        }
         
         if (window.parent !== window) {
             window.parent.postMessage({
@@ -429,39 +665,33 @@ export default class GameScene extends Phaser.Scene {
 
     lockPlayerControl() {
         if (this.isInputLocked) return;
-        
         this.isInputLocked = true;
-        
-        // Останавливаем движение игрока
         if (this.player && this.player.body) {
             this.player.body.setVelocity(0, 0);
         }
-        
-        // Показываем модальное окно
         if (window.parent !== window) {
-            window.parent.postMessage({
-                type: 'SHOW_EXIT_MODAL',
-                data: {}
-            }, '*');
+            window.parent.postMessage({ type: 'SHOW_EXIT_MODAL', data: {} }, '*');
         }
     }
 
     unlockPlayerControl() {
         if (!this.isInputLocked) return;
-        
         this.isInputLocked = false;
-        
-        // Отправляем сообщение о закрытии модалки (если нужно)
-        // Модалка уже закрыта из React
-        
-        // Управление восстанавливается автоматически в update()
     }
 
     update() {
         if (this.gameOver) return;
+
+        if (!this.player || !this.input || !this.input.keyboard) {
+            return;
+        }
+        
+        if (!this.cursors || !this.wasd || !this.dashKeyShift) {
+            return;
+        }
         
         // Обработка коллизии между игроком и врагом (отталкивание)
-        if (this.player && this.enemy && this.enemy.active) {
+        if (!this.isMultiplayer && this.player && this.enemy && this.enemy.active) {
             const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.enemy.x, this.enemy.y);
             const minDistance = (this.player.width * 0.5) + (this.enemy.width * 0.5);
             
@@ -503,10 +733,26 @@ export default class GameScene extends Phaser.Scene {
         }
         
         // Обновление врага
-        this.enemy.update(this.player);
+        if (this.enemy && this.enemy.active) {
+            this.enemy.update(this.player);
+        }
         
         // Обновление UI
         this.hud.update();
+
+        if (this.isMultiplayer && multiplayerSocket.connected && multiplayerSocket.roomId && !this.gameOver) {
+            const now = Date.now();
+            if (now - this.lastSyncTime >= this.syncInterval) {
+                this.lastSyncTime = now;
+                multiplayerSocket.updatePlayerPosition({
+                    x: this.player.x,
+                    y: this.player.y,
+                    rotation: this.player.rotation,
+                    hp: this.player.hp,
+                    ammo: this.player.ammo
+                });
+            }
+        }
         
         // Проверка смерти игрока
         if (this.player.hp <= 0) {
