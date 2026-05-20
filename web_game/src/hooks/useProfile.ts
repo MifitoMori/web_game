@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import type { GameStats, InventoryItem, Loadout, ProfileData, UserProfile } from '@app-types/profile';
 import type { ShopItem, ShopPurchaseResponse } from '@app-types/shop';
+import { apiFetch } from '@services/api';
 
 type BackendProfile = {
   totalGames: number;
@@ -168,7 +169,7 @@ export const useProfile = () => {
         throw new Error('Пользователь не авторизован');
       }
 
-      const response = await fetch(getApiUrl('/api/profile'), {
+      const response = await apiFetch(getApiUrl('/api/profile'), {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -212,7 +213,7 @@ export const useProfile = () => {
         throw new Error('Пользователь не авторизован');
       }
 
-      const response = await fetch(getApiUrl('/api/profile/equip'), {
+      const response = await apiFetch(getApiUrl('/api/profile/equip'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -253,7 +254,7 @@ export const useProfile = () => {
         throw new Error('Пользователь не авторизован');
       }
 
-      const response = await fetch(getApiUrl('/api/profile/unequip'), {
+      const response = await apiFetch(getApiUrl('/api/profile/unequip'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -300,7 +301,7 @@ export const useProfile = () => {
         throw new Error('Не удалось определить предмет для покупки');
       }
 
-      const response = await fetch(getApiUrl('/api/shop/purchase'), {
+      const response = await apiFetch(getApiUrl('/api/shop/purchase'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

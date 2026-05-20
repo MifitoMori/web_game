@@ -29,6 +29,7 @@ import {
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import type { ShopCatalogItem, ShopCategory, ShopItem } from '@app-types/shop';
+import { apiFetch } from '@services/api';
 import classes from './Shop.module.css';
 
 interface ShopProps {
@@ -82,7 +83,7 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
       setIsCatalogLoading(true);
 
       try {
-        const response = await fetch(getApiUrl('/api/shop/catalog'), {
+        const response = await apiFetch(getApiUrl('/api/shop/catalog'), {
           headers: {
             Authorization: `Bearer ${token}`,
           },

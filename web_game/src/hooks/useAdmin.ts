@@ -1,6 +1,11 @@
 import { createElement, useCallback, useEffect, useState } from 'react';
-import { Button, Stack, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import {
+  apiFetch,
+  AUTH_USER_UPDATED_EVENT,
+  refreshCurrentUser,
+  type AuthUserUpdatedDetail,
+} from '@services/api';
 
 export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -43,10 +48,27 @@ type UseAdminReturn = {
   isLoading: boolean;
   isSaving: boolean;
   refreshData: () => Promise<void>;
+  refreshAdminPanel: () => Promise<void>;
   updateUserRole: (userId: number, role: AdminRole) => Promise<void>;
   createCatalogItem: (payload: AdminCatalogPayload) => Promise<void>;
   updateCatalogItem: (id: number, payload: Partial<AdminCatalogPayload>) => Promise<void>;
   deleteCatalogItem: (id: number) => Promise<AdminCatalogItem>;
+};
+
+type UndoNotificationParams = {
+  title: string;
+  message: string;
+  color: string;
+  onUndo?: () => Promise<void>;
+};
+
+type AdminAuthUser = {
+  id: number;
+  firstName?: string;
+  secondName?: string;
+  login: string;
+  email: string;
+  role: AdminRole;
 };
 
 const ACCESS_TOKEN_KEY = 'token';
@@ -91,14 +113,62 @@ const toCatalogPayload = (item: AdminCatalogItem): AdminCatalogPayload => ({
   currency: item.currency,
 });
 
-export const useAdmin = (): UseAdminReturn => {
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
+const getStoredUserRole = (): AdminRole | undefined => {
+  try {
+    const rawUser = localStorage.getItem('user');
+    const role = rawUser ? (JSON.parse(rawUser) as { role?: string }).role : undefined;
+
+    return role === 'USER' || role === 'ADMIN' || role === 'SUPER_ADMIN' ? role : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const isAdminAuthUser = (user: unknown): user is AdminAuthUser => {
+  if (!user || typeof user !== 'object') {
+    return false;
+  }
+
+  const candidate = user as Partial<AdminAuthUser>;
+
+  return (
+    typeof candidate.id === 'number' &&
+    typeof candidate.login === 'string' &&
+    typeof candidate.email === 'string' &&
+    (candidate.role === 'USER' ||
+      candidate.role === 'ADMIN' ||
+      candidate.role === 'SUPER_ADMIN')
+  );
+};
+
+const mergeAuthUserIntoAdminList = (
+  users: AdminUserListItem[],
+  currentUser: AdminAuthUser,
+) =>
+  users.map((user) =>
+    user.id === currentUser.id
+      ? {
+          ...user,
+          firstName: currentUser.firstName ?? user.firstName,
+          secondName: currentUser.secondName ?? user.secondName,
+          login: currentUser.login,
+          email: currentUser.email,
+          role: currentUser.role,
+        }
+      : user,
+  );
+
+export const useAdmin = (currentUserRole?: AdminRole): UseAdminReturn => {
   const [users, setUsers] = useState<AdminUserListItem[]>([]);
   const [catalogItems, setCatalogItems] = useState<AdminCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchJson = useCallback(async <T,>(path: string, init?: RequestInit) => {
-    const response = await fetch(getApiUrl(path), {
+    const response = await apiFetch(getApiUrl(path), {
       ...init,
       headers: {
         ...getAuthHeaders(),
@@ -113,14 +183,40 @@ export const useAdmin = (): UseAdminReturn => {
     return (await response.json()) as T;
   }, []);
 
+  const syncCurrentUser = useCallback(async () => {
+    const currentUser = await refreshCurrentUser();
+
+    if (!currentUser) {
+      return;
+    }
+
+    setUsers((current) =>
+      isAdminAuthUser(currentUser) ? mergeAuthUserIntoAdminList(current, currentUser) : current,
+    );
+  }, []);
+
   const showUndoNotification = useCallback(
-    (params: {
-      title: string;
-      message: string;
-      color: string;
-      onUndo: () => Promise<void>;
-    }) => {
+    (params: UndoNotificationParams) => {
       const id = `admin-undo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      if (!params.onUndo) {
+        notifications.show({
+          id,
+          title: params.title,
+          color: params.color,
+          autoClose: 10000,
+          withCloseButton: true,
+          message: createElement(
+            'div',
+            { style: { display: 'grid', gap: 6 } },
+            createElement('div', { style: { fontSize: 14 } }, params.message),
+          ),
+        });
+
+        return;
+      }
+
+      const onUndo = params.onUndo;
 
       notifications.show({
         id,
@@ -129,18 +225,32 @@ export const useAdmin = (): UseAdminReturn => {
         autoClose: 10000,
         withCloseButton: true,
         message: createElement(
-          Stack,
-          { gap: 6 },
-          createElement(Text, { size: 'sm' }, params.message),
+          'div',
+          { style: { display: 'grid', gap: 6 } },
+          createElement('div', { style: { fontSize: 14 } }, params.message),
           createElement(
-            Button,
+            'button',
             {
-              size: 'compact-xs',
-              variant: 'light',
-              w: 'fit-content',
+              type: 'button',
+              style: {
+                width: 'fit-content',
+                border: '1px solid var(--mantine-color-blue-4)',
+                borderRadius: 4,
+                background: 'transparent',
+                color: 'var(--mantine-color-blue-3)',
+                cursor: 'pointer',
+                fontSize: 12,
+                padding: '2px 8px',
+              },
               onClick: () => {
                 notifications.hide(id);
-                void params.onUndo();
+                void onUndo().catch((error) => {
+                  notifications.show({
+                    title: 'Не удалось отменить действие',
+                    message: getErrorMessage(error, 'Попробуйте обновить страницу и повторить действие'),
+                    color: 'red',
+                  });
+                });
               },
             },
             'Отменить',
@@ -178,24 +288,51 @@ export const useAdmin = (): UseAdminReturn => {
     void refreshData();
   }, [refreshData]);
 
+  useEffect(() => {
+    const handleUserUpdated = (event: Event) => {
+      const { user: nextUser } = (event as CustomEvent<AuthUserUpdatedDetail>).detail;
+
+      if (!isAdminAuthUser(nextUser)) {
+        return;
+      }
+
+      setUsers((current) => mergeAuthUserIntoAdminList(current, nextUser));
+    };
+
+    window.addEventListener(AUTH_USER_UPDATED_EVENT, handleUserUpdated);
+
+    return () => window.removeEventListener(AUTH_USER_UPDATED_EVENT, handleUserUpdated);
+  }, []);
+
+  const refreshAdminPanel = useCallback(async () => {
+    await Promise.all([refreshData(), syncCurrentUser()]);
+  }, [refreshData, syncCurrentUser]);
+
   const updateUserRole = async (userId: number, role: AdminRole) => {
     const previousUser = users.find((user) => user.id === userId);
 
     setIsSaving(true);
 
     try {
-      await fetchJson(`/api/admin/users/${userId}`, {
+      const updatedUser = await fetchJson<AdminUserListItem>(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         body: JSON.stringify({ role }),
       });
 
-      await refreshData();
+      setUsers((current) =>
+        current.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
+      );
+      await syncCurrentUser();
+
+      const canUndoRoleChange = (currentUserRole ?? getStoredUserRole()) === 'SUPER_ADMIN';
 
       showUndoNotification({
-        title: 'Роль обновлена',
-        message: `Роль пользователя ${previousUser?.login ?? `#${userId}`} изменена`,
+        title: canUndoRoleChange ? 'Роль обновлена' : 'Изменение применено',
+        message: canUndoRoleChange
+          ? `Роль пользователя ${previousUser?.login ?? `#${userId}`} изменена`
+          : 'Для его отмены обратитесь к супер-админу',
         color: 'green',
-        onUndo: async () => {
+        onUndo: canUndoRoleChange ? async () => {
           if (!previousUser) {
             return;
           }
@@ -203,12 +340,15 @@ export const useAdmin = (): UseAdminReturn => {
           setIsSaving(true);
 
           try {
-            await fetchJson(`/api/admin/users/${userId}`, {
+            const restoredUser = await fetchJson<AdminUserListItem>(`/api/admin/users/${userId}`, {
               method: 'PATCH',
               body: JSON.stringify({ role: previousUser.role }),
             });
 
-            await refreshData();
+            setUsers((current) =>
+              current.map((user) => (user.id === restoredUser.id ? restoredUser : user)),
+            );
+            await syncCurrentUser();
 
             notifications.show({
               title: 'Изменение отменено',
@@ -218,7 +358,7 @@ export const useAdmin = (): UseAdminReturn => {
           } finally {
             setIsSaving(false);
           }
-        },
+        } : undefined,
       });
     } finally {
       setIsSaving(false);
@@ -235,6 +375,7 @@ export const useAdmin = (): UseAdminReturn => {
       });
 
       setCatalogItems((current) => [...current, createdItem].sort((a, b) => a.id - b.id));
+      await syncCurrentUser();
 
       showUndoNotification({
         title: 'Товар добавлен',
@@ -249,6 +390,7 @@ export const useAdmin = (): UseAdminReturn => {
             });
 
             setCatalogItems((current) => current.filter((item) => item.id !== createdItem.id));
+            await syncCurrentUser();
 
             notifications.show({
               title: 'Добавление отменено',
@@ -277,6 +419,7 @@ export const useAdmin = (): UseAdminReturn => {
       });
 
       setCatalogItems((current) => current.map((item) => (item.id === id ? updatedItem : item)));
+      await syncCurrentUser();
 
       showUndoNotification({
         title: 'Товар обновлен',
@@ -298,6 +441,7 @@ export const useAdmin = (): UseAdminReturn => {
             setCatalogItems((current) =>
               current.map((item) => (item.id === id ? restoredItem : item)),
             );
+            await syncCurrentUser();
 
             notifications.show({
               title: 'Изменение отменено',
@@ -323,6 +467,7 @@ export const useAdmin = (): UseAdminReturn => {
       });
 
       setCatalogItems((current) => current.filter((item) => item.id !== id));
+      await syncCurrentUser();
 
       showUndoNotification({
         title: 'Товар удален',
@@ -338,6 +483,7 @@ export const useAdmin = (): UseAdminReturn => {
             });
 
             setCatalogItems((current) => [...current, restoredItem].sort((a, b) => a.id - b.id));
+            await syncCurrentUser();
 
             notifications.show({
               title: 'Удаление отменено',
@@ -362,6 +508,7 @@ export const useAdmin = (): UseAdminReturn => {
     isLoading,
     isSaving,
     refreshData,
+    refreshAdminPanel,
     updateUserRole,
     createCatalogItem,
     updateCatalogItem,
