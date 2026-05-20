@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
+import {
+  AUTH_USER_UPDATED_EVENT,
+  type AuthUserUpdatedDetail,
+} from '@services/api';
 
 type BackendProfile = {
   id: number;
@@ -167,6 +171,18 @@ export const useAuth = (): UseAuthReturn => {
     };
 
     void checkAuth();
+  }, []);
+
+  useEffect(() => {
+    const handleUserUpdated = (event: Event) => {
+      const { user: nextUser } = (event as CustomEvent<AuthUserUpdatedDetail>).detail;
+      setUser(nextUser as User | null);
+      setIsLoading(false);
+    };
+
+    window.addEventListener(AUTH_USER_UPDATED_EVENT, handleUserUpdated);
+
+    return () => window.removeEventListener(AUTH_USER_UPDATED_EVENT, handleUserUpdated);
   }, []);
 
   const login = async (loginValue: string, password: string) => {

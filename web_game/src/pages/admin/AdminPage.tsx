@@ -21,6 +21,7 @@ import {
   Textarea,
   ThemeIcon,
   Title,
+  Tooltip,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -43,18 +44,18 @@ import {
 } from '@hooks/useAdmin';
 
 const roleOptions = [
-  { value: 'USER', label: 'USER' },
-  { value: 'ADMIN', label: 'ADMIN' },
+  { value: 'USER', label: 'Пользователь' },
+  { value: 'ADMIN', label: 'Админ' },
 ];
 
 const getRoleLabel = (role: AdminRole) => {
   switch (role) {
     case 'SUPER_ADMIN':
-      return 'SUPER_ADMIN';
+      return 'Супер-админ';
     case 'ADMIN':
-      return 'ADMIN';
+      return 'Админ';
     default:
-      return 'USER';
+      return 'Пользователь';
   }
 };
 
@@ -89,6 +90,12 @@ const defaultCatalogForm: CatalogFormValues = {
 
 type CatalogFormErrors = Partial<Record<keyof CatalogFormValues, string>>;
 
+const slugLabel = (
+  <Tooltip label="Человеко-понятный индентификатор" withArrow>
+    <span>Слаг</span>
+  </Tooltip>
+);
+
 const AdminPage = () => {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
@@ -97,12 +104,12 @@ const AdminPage = () => {
     catalogItems,
     isLoading,
     isSaving,
-    refreshData,
+    refreshAdminPanel,
     updateUserRole,
     createCatalogItem,
     updateCatalogItem,
     deleteCatalogItem,
-  } = useAdmin();
+  } = useAdmin(currentUser?.role);
 
   const [selectedRoles, setSelectedRoles] = useState<Record<number, AdminRole>>({});
   const [opened, { open, close }] = useDisclosure(false);
@@ -114,7 +121,7 @@ const AdminPage = () => {
     setSelectedRoles(
       Object.fromEntries(users.map((user) => [user.id, user.role])) as Record<number, AdminRole>,
     );
-  }, [users]);
+  }, [currentUser?.role, users]);
 
   const ensureRoleValue = (userId: number): AdminRole => {
     return selectedRoles[userId] ?? 'USER';
@@ -167,6 +174,23 @@ const AdminPage = () => {
     }));
   };
 
+  const changedRoleUsers = users.filter(
+    (user) => canEditRole(user) && ensureRoleValue(user.id) !== user.role,
+  );
+
+  const roleManagementDescription =
+    currentUser?.role === 'SUPER_ADMIN'
+      ? 'Супер-админ может назначать роли Пользователь и Админ всем пользователям, кроме себя и других супер-админов.'
+      : currentUser?.role === 'ADMIN'
+        ? 'Админ может назначить роль Админ только обычным пользователям. Отменить такое изменение или понизить администратора может только супер-админ.'
+        : 'У вашей роли нет прав на изменение ролей пользователей.';
+
+  const handleSaveRoleChanges = async () => {
+    for (const user of changedRoleUsers) {
+      await updateUserRole(user.id, ensureRoleValue(user.id));
+    }
+  };
+
   const handleCatalogFieldChange = (
     field: keyof CatalogFormValues,
     value: string | number,
@@ -196,9 +220,9 @@ const AdminPage = () => {
     const description = catalogForm.description.trim();
 
     if (slug.length < 3) {
-      nextErrors.slug = 'Slug должен содержать минимум 3 символа';
+      nextErrors.slug = 'Слаг должен содержать минимум 3 символа';
     } else if (slug.length > 100) {
-      nextErrors.slug = 'Slug не должен быть длиннее 100 символов';
+      nextErrors.slug = 'Слаг не должен быть длиннее 100 символов';
     }
 
     if (!name) {
@@ -295,7 +319,7 @@ const AdminPage = () => {
         <Stack gap="sm">
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" verticalSpacing="sm">
             <TextInput
-              label="Slug"
+              label={slugLabel}
               value={catalogForm.slug}
               error={catalogFormErrors.slug}
               onChange={(event) => handleCatalogFieldChange('slug', event.currentTarget.value)}
@@ -388,7 +412,7 @@ const AdminPage = () => {
             <Button
               variant="light"
               leftSection={<IconRefresh size={18} />}
-              onClick={() => void refreshData()}
+              onClick={() => void refreshAdminPanel()}
               loading={isLoading}
             >
               Обновить
@@ -449,63 +473,67 @@ const AdminPage = () => {
           </Tabs.List>
 
           <Tabs.Panel value="users" pt="md">
-            <Paper withBorder radius="lg" p="lg">
-              <ScrollArea>
-                <Table striped highlightOnHover withTableBorder>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>ID</Table.Th>
-                      <Table.Th>Имя</Table.Th>
-                      <Table.Th>Логин</Table.Th>
-                      <Table.Th>Email</Table.Th>
-                      <Table.Th>Дата регистрации</Table.Th>
-                      <Table.Th>Роль</Table.Th>
-                      <Table.Th>Действие</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {users.map((user) => (
-                      <Table.Tr key={user.id}>
-                        <Table.Td>{user.id}</Table.Td>
-                        <Table.Td>
-                          {user.firstName} {user.secondName}
-                        </Table.Td>
-                        <Table.Td>{user.login}</Table.Td>
-                        <Table.Td>{user.email}</Table.Td>
-                        <Table.Td>{dayjs(user.createdAt).format('DD.MM.YYYY')}</Table.Td>
-                        <Table.Td>
-                          {user.role === 'SUPER_ADMIN' ? (
-                            <Badge color="red" variant="light">
-                              {getRoleLabel(user.role)}
-                            </Badge>
-                          ) : (
-                            <Select
-                              data={roleOptions}
-                              value={ensureRoleValue(user.id)}
-                              onChange={(value) => handleRoleSelect(user.id, value)}
-                              allowDeselect={false}
-                              disabled={!canEditRole(user)}
-                            />
-                          )}
-                        </Table.Td>
-                        <Table.Td>
-                          <Button
-                            size="xs"
-                            onClick={() =>
-                              void updateUserRole(user.id, ensureRoleValue(user.id))
-                            }
-                            loading={isSaving}
-                            disabled={!canEditRole(user)}
-                          >
-                            {!canEditRole(user) ? 'Недоступно' : 'Сохранить'}
-                          </Button>
-                        </Table.Td>
+            <Stack gap="md">
+              <Group justify="space-between" align="flex-start">
+                <div>
+                  <Title order={3}>Пользователи</Title>
+                  <Text c="dimmed" size="sm">
+                    {roleManagementDescription}
+                  </Text>
+                </div>
+                <Button
+                  onClick={() => void handleSaveRoleChanges()}
+                  loading={isSaving}
+                  disabled={changedRoleUsers.length === 0 || isSaving}
+                >
+                  Сохранить изменения
+                </Button>
+              </Group>
+              <Paper withBorder radius="lg" p="lg">
+                <ScrollArea>
+                  <Table striped highlightOnHover withTableBorder>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>ID</Table.Th>
+                        <Table.Th>Имя</Table.Th>
+                        <Table.Th>Логин</Table.Th>
+                        <Table.Th>Email</Table.Th>
+                        <Table.Th>Дата регистрации</Table.Th>
+                        <Table.Th>Роль</Table.Th>
                       </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </ScrollArea>
-            </Paper>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {users.map((user) => (
+                        <Table.Tr key={user.id}>
+                          <Table.Td>{user.id}</Table.Td>
+                          <Table.Td>
+                            {user.firstName} {user.secondName}
+                          </Table.Td>
+                          <Table.Td>{user.login}</Table.Td>
+                          <Table.Td>{user.email}</Table.Td>
+                          <Table.Td>{dayjs(user.createdAt).format('DD.MM.YYYY')}</Table.Td>
+                          <Table.Td>
+                            {user.role === 'SUPER_ADMIN' ? (
+                              <Badge color="red" variant="light">
+                                {getRoleLabel(user.role)}
+                              </Badge>
+                            ) : (
+                              <Select
+                                data={roleOptions}
+                                value={ensureRoleValue(user.id)}
+                                onChange={(value) => handleRoleSelect(user.id, value)}
+                                allowDeselect={false}
+                                disabled={!canEditRole(user)}
+                              />
+                            )}
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </ScrollArea>
+              </Paper>
+            </Stack>
           </Tabs.Panel>
 
           <Tabs.Panel value="catalog" pt="md">
@@ -529,7 +557,7 @@ const AdminPage = () => {
                       <Table.Tr>
                         <Table.Th>ID</Table.Th>
                         <Table.Th>Название</Table.Th>
-                        <Table.Th>Slug</Table.Th>
+                        <Table.Th>{slugLabel}</Table.Th>
                         <Table.Th>Категория</Table.Th>
                         <Table.Th>Редкость</Table.Th>
                         <Table.Th>Цена</Table.Th>

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -43,23 +44,33 @@ export class AdminService {
 
   private readonly editableRoles: Role[] = [Role.USER, Role.ADMIN];
 
+  private toUserListItem(user: {
+    id: number;
+    firstName: string;
+    secondName: string;
+    login: string;
+    email: string;
+    role: Role;
+    createdAt: Date;
+  }) {
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      secondName: user.secondName,
+      login: user.login,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+    };
+  }
+
   async findAllUsers() {
     const gameUsers = await this.prisma.user.findMany({
       orderBy: { id: 'asc' },
       select: this.safeUserSelect,
     });
 
-    return gameUsers.map((user) => {
-      return {
-        id: user.id,
-        firstName: user.firstName,
-        secondName: user.secondName,
-        login: user.login,
-        email: user.email,
-        role: user.role,
-        createdAt: user.createdAt,
-      };
-    });
+    return gameUsers.map((user) => this.toUserListItem(user));
   }
 
   async updateUserRole(params: {
@@ -86,13 +97,13 @@ export class AdminService {
     }
 
     if (actorId === targetUserId) {
-      throw new BadRequestException(
+      throw new ForbiddenException(
         'Нельзя изменить роль собственного аккаунта',
       );
     }
 
     if (targetUser.role === Role.SUPER_ADMIN) {
-      throw new BadRequestException(
+      throw new ForbiddenException(
         'Роль супер админа меняется только вручную в базе данных',
       );
     }
@@ -102,20 +113,23 @@ export class AdminService {
         targetUser.role === Role.USER && nextRole === Role.ADMIN;
 
       if (!canPromoteUser) {
-        throw new BadRequestException(
+        throw new ForbiddenException(
           'Админ может только назначить обычного пользователя админом',
         );
       }
     }
 
     if (actorRole !== Role.ADMIN && actorRole !== Role.SUPER_ADMIN) {
-      throw new BadRequestException('Недостаточно прав для изменения роли');
+      throw new ForbiddenException('Недостаточно прав для изменения роли');
     }
 
-    return this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id: targetUserId },
       data: { role: nextRole },
+      select: this.safeUserSelect,
     });
+
+    return this.toUserListItem(updatedUser);
   }
 
   async findAllCatalogItems() {
