@@ -29,7 +29,7 @@ import {
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import type { ShopCatalogItem, ShopCategory, ShopItem } from '@app-types/shop';
-import { apiFetch } from '@services/api';
+import { apiFetch, getApiUrl } from '@services/api';
 import classes from './Shop.module.css';
 
 interface ShopProps {
@@ -37,10 +37,6 @@ interface ShopProps {
   gems: number;
   onPurchase: (item: ShopItem) => Promise<boolean>;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
-
-const getApiUrl = (path: string) => `${API_BASE_URL}${path}`;
 
 const categoryNames: Record<ShopCatalogItem['type'], string> = {
   skin: 'Скины',
@@ -74,20 +70,11 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
       return;
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return;
-    }
-
     const loadCatalog = async () => {
       setIsCatalogLoading(true);
 
       try {
-        const response = await apiFetch(getApiUrl('/api/shop/catalog'), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await apiFetch(getApiUrl('/api/shop/catalog'));
 
         if (!response.ok) {
           throw new Error('Не удалось загрузить каталог магазина');

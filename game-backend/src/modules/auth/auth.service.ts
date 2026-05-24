@@ -27,14 +27,21 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  private get refreshTokenSecret() {
+  get accessTokenExpiresIn() {
+    return this.configService.get<SignOptions['expiresIn']>(
+      'JWT_EXPIRES_IN',
+      '7d',
+    );
+  }
+
+  get refreshTokenSecret() {
     return this.configService.get<string>(
       'JWT_REFRESH_SECRET',
       this.configService.get<string>('JWT_SECRET', 'dev-secret-key'),
     );
   }
 
-  private get refreshTokenExpiresIn() {
+  get refreshTokenExpiresIn() {
     return this.configService.get<SignOptions['expiresIn']>(
       'JWT_REFRESH_EXPIRES_IN',
       '30d',
@@ -77,7 +84,9 @@ export class AuthService {
       role: user.role,
     };
 
-    const accessToken = await this.jwtService.signAsync(payload);
+    const accessToken = await this.jwtService.signAsync(payload, {
+      expiresIn: this.accessTokenExpiresIn,
+    });
     const refreshToken = await this.jwtService.signAsync(payload, {
       secret: this.refreshTokenSecret,
       expiresIn: this.refreshTokenExpiresIn,

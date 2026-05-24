@@ -5,6 +5,7 @@ import { Notifications, notifications } from '@mantine/notifications';
 import { ModalsProvider } from '@mantine/modals';
 import {
   API_ACCESS_REVOKED_EVENT,
+  clearAuthTokens,
   notifyAuthUserUpdated,
   refreshCurrentUser,
   type ApiAccessRevokedDetail,
@@ -33,9 +34,7 @@ import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 
 const clearSession = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
+  clearAuthTokens();
 };
 
 const ApiAccessRevokedHandler = () => {

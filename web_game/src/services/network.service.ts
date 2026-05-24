@@ -16,7 +16,9 @@ export class NetworkService {
     }
 
     try {
-      const response = await fetch('/api/network/ip');
+      const response = await fetch('/api/network/ip', {
+        credentials: 'include',
+      });
       const data = await response.json();
       const detectedIp = data.ip as string; 
       this.serverIp = detectedIp;

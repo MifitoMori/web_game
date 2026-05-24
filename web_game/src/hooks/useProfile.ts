@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import type { GameStats, InventoryItem, Loadout, ProfileData, UserProfile } from '@app-types/profile';
 import type { ShopItem, ShopPurchaseResponse } from '@app-types/shop';
-import { apiFetch } from '@services/api';
+import { apiFetch, getApiUrl } from '@services/api';
 
 type BackendProfile = {
   totalGames: number;
@@ -41,10 +41,6 @@ type BackendProfileResponse = {
   profile: BackendProfile;
   inventory: BackendInventoryItem[];
 };
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
-
-const getApiUrl = (path: string) => `${API_BASE_URL}${path}`;
 
 const extractErrorMessage = async (response: Response) => {
   try {
@@ -163,17 +159,7 @@ export const useProfile = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        throw new Error('Пользователь не авторизован');
-      }
-
-      const response = await apiFetch(getApiUrl('/api/profile'), {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiFetch(getApiUrl('/api/profile'));
 
       if (!response.ok) {
         throw new Error(await extractErrorMessage(response));
@@ -207,17 +193,10 @@ export const useProfile = () => {
 
   const equipItem = async (item: InventoryItem) => {
     try {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        throw new Error('Пользователь не авторизован');
-      }
-
       const response = await apiFetch(getApiUrl('/api/profile/equip'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ inventoryItemId: Number(item.id) }),
       });
@@ -248,17 +227,10 @@ export const useProfile = () => {
 
   const unequipItem = async (itemType: string) => {
     try {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        throw new Error('Пользователь не авторизован');
-      }
-
       const response = await apiFetch(getApiUrl('/api/profile/unequip'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ type: itemType }),
       });
@@ -289,12 +261,6 @@ export const useProfile = () => {
 
   const purchaseItem = async (shopItem: ShopItem): Promise<boolean> => {
     try {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        throw new Error('Пользователь не авторизован');
-      }
-
       const slug = 'slug' in shopItem && typeof shopItem.slug === 'string' ? shopItem.slug : null;
 
       if (!slug) {
@@ -305,7 +271,6 @@ export const useProfile = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ slug }),
       });

@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import {
   AUTH_USER_UPDATED_EVENT,
+  apiFetch,
+  clearAuthTokens,
+  getApiUrl,
   type AuthUserUpdatedDetail,
 } from '@services/api';
 
@@ -35,8 +38,6 @@ type BackendUser = {
 };
 
 type AuthResponse = {
-  accessToken: string;
-  refreshToken: string;
   user: BackendUser;
 };
 
@@ -76,13 +77,6 @@ interface UseAuthReturn {
   logout: () => Promise<void>;
 }
 
-const ACCESS_TOKEN_KEY = 'token';
-const REFRESH_TOKEN_KEY = 'refreshToken';
-const USER_KEY = 'user';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
-
-const getApiUrl = (path: string) => `${API_BASE_URL}${path}`;
-
 const mapUser = (user: BackendUser): User => ({
   id: user.id,
   login: user.login,
@@ -120,17 +114,13 @@ const extractErrorMessage = async (response: Response) => {
 const saveSession = (authData: AuthResponse) => {
   const normalizedUser = mapUser(authData.user);
 
-  localStorage.setItem(ACCESS_TOKEN_KEY, authData.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, authData.refreshToken);
-  localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+  clearAuthTokens();
 
   return normalizedUser;
 };
 
 const clearSession = () => {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  clearAuthTokens();
 };
 
 export const useAuth = (): UseAuthReturn => {
@@ -139,18 +129,9 @@ export const useAuth = (): UseAuthReturn => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        const response = await fetch(getApiUrl('/api/me'), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const response = await apiFetch(getApiUrl('/api/me'), {
+          skipAuthRevokedEvent: true,
         });
 
         if (!response.ok) {
@@ -160,7 +141,6 @@ export const useAuth = (): UseAuthReturn => {
         const backendUser = (await response.json()) as BackendUser;
         const normalizedUser = mapUser(backendUser);
 
-        localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
         setUser(normalizedUser);
       } catch (error) {
         console.error('Auth error:', error);
@@ -191,6 +171,7 @@ export const useAuth = (): UseAuthReturn => {
     try {
       const response = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -233,6 +214,7 @@ export const useAuth = (): UseAuthReturn => {
     try {
       const response = await fetch(getApiUrl('/api/auth/register'), {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -268,18 +250,15 @@ export const useAuth = (): UseAuthReturn => {
   };
 
   const logout = async () => {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-
     try {
-      if (refreshToken) {
-        await fetch(getApiUrl('/api/auth/logout'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ refreshToken }),
-        });
-      }
+      await fetch(getApiUrl('/api/auth/logout'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {

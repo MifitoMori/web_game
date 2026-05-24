@@ -18,6 +18,7 @@ class MultiplayerSocket {
         this.socket = io('http://localhost:3001/game', {
           transports: ['websocket'],
           reconnection: false,
+          withCredentials: true,
         });
   
         this.socket.on('connect', () => {
@@ -26,6 +27,16 @@ class MultiplayerSocket {
           this.userId = userId;
           this.nickname = nickname;
           resolve();
+        });
+
+        this.socket.on('authSuccess', (data) => {
+          this.userId = data.userId;
+          this.nickname = data.nickname;
+        });
+
+        this.socket.on('authError', (error) => {
+          console.error('WebSocket auth error:', error);
+          reject(new Error(error?.message || 'WebSocket auth failed'));
         });
   
         this.socket.on('connect_error', (error) => {
@@ -37,10 +48,7 @@ class MultiplayerSocket {
   
     findMatch() {
       if (!this.socket) return;
-      this.socket.emit('findMatch', {
-        userId: this.userId,
-        nickname: this.nickname,
-      });
+      this.socket.emit('findMatch', {});
     }
   
     cancelSearch() {

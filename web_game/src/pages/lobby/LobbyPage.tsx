@@ -83,7 +83,9 @@ class NetworkService {
 
   async getServerIp(): Promise<string> {
     try {
-      const response = await fetch('/api/network/ip');
+      const response = await fetch('/api/network/ip', {
+        credentials: 'include',
+      });
       const data = await response.json();
       this.serverIp = data.ip || 'localhost';
       console.log('Server IP detected:', this.serverIp);
@@ -122,6 +124,7 @@ const LobbyPage: React.FC = () => {
       const newSocket = io(wsUrl, {
         transports: ['websocket'],
         autoConnect: false,
+        withCredentials: true,
       });
       
       setSocket(newSocket);
@@ -185,16 +188,29 @@ const LobbyPage: React.FC = () => {
       });
     };
 
+    const handleAuthError = () => {
+      setSearching(false);
+      notifications.show({
+        title: 'Ошибка авторизации',
+        message: 'Войдите в аккаунт заново',
+        color: 'red',
+      });
+    };
+
     socket.on('waitingForPlayer', handleWaitingForPlayer);
     socket.on('matchFound', handleMatchFound);
     socket.on('searchCancelled', handleSearchCancelled);
     socket.on('searchTimeout', handleSearchTimeout);
+    socket.on('authError', handleAuthError);
+    socket.on('connect_error', handleAuthError);
 
     return () => {
       socket.off('waitingForPlayer', handleWaitingForPlayer);
       socket.off('matchFound', handleMatchFound);
       socket.off('searchCancelled', handleSearchCancelled);
       socket.off('searchTimeout', handleSearchTimeout);
+      socket.off('authError', handleAuthError);
+      socket.off('connect_error', handleAuthError);
     };
   }, [socket, navigate, user, profileData, serverIp]);
 
@@ -216,10 +232,7 @@ const LobbyPage: React.FC = () => {
     }
     
     // Отправляем запрос на поиск матча
-    socket.emit('findMatch', {
-      userId: user?.id,
-      nickname: profileData?.profile?.username || 'Игрок',
-    });
+    socket.emit('findMatch', {});
   };
 
   const cancelSearch = () => {

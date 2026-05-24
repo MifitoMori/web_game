@@ -16,7 +16,9 @@ class NetworkService {
 
   async getServerIp(): Promise<string> {
     try {
-      const response = await fetch('/api/network/ip');
+      const response = await fetch('/api/network/ip', {
+        credentials: 'include',
+      });
       const data = await response.json();
       this.serverIp = data.ip || 'localhost';
       console.log('Server IP detected:', this.serverIp);

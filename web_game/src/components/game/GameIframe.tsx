@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Loader, Center, Button, Group } from '@mantine/core';
+import { Loader, Center, Button } from '@mantine/core';
 import { IconDeviceGamepad2 } from '@tabler/icons-react';
 
 const GAME_URL = 'http://localhost:8080';
@@ -9,7 +9,7 @@ interface GameIframeProps {
   onExit?: () => void;
 }
 
-const GameIframe: React.FC<GameIframeProps> = ({ onGameEnd, onExit }) => {
+const GameIframe: React.FC<GameIframeProps> = ({ onGameEnd }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -30,24 +30,8 @@ const GameIframe: React.FC<GameIframeProps> = ({ onGameEnd, onExit }) => {
     return () => window.removeEventListener('message', handleMessage);
   }, [onGameEnd]);
 
-  const sendUserData = () => {
-    if (iframeRef.current?.contentWindow) {
-      const userData = {
-        userId: localStorage.getItem('userId'),
-        username: localStorage.getItem('username'),
-        token: localStorage.getItem('token')
-      };
-      
-      iframeRef.current.contentWindow.postMessage({
-        type: 'USER_DATA',
-        data: userData
-      }, GAME_URL);
-    }
-  };
-
   const handleLoad = () => {
     setLoading(false);
-    sendUserData();
   };
 
   const handleError = () => {

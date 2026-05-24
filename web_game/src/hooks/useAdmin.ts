@@ -3,6 +3,7 @@ import { notifications } from '@mantine/notifications';
 import {
   apiFetch,
   AUTH_USER_UPDATED_EVENT,
+  getApiUrl,
   refreshCurrentUser,
   type AuthUserUpdatedDetail,
 } from '@services/api';
@@ -71,20 +72,6 @@ type AdminAuthUser = {
   role: AdminRole;
 };
 
-const ACCESS_TOKEN_KEY = 'token';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
-
-const getApiUrl = (path: string) => `${API_BASE_URL}${path}`;
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-
-  return {
-    Authorization: `Bearer ${token ?? ''}`,
-    'Content-Type': 'application/json',
-  };
-};
-
 const extractErrorMessage = async (response: Response) => {
   try {
     const payload = await response.json();
@@ -115,17 +102,6 @@ const toCatalogPayload = (item: AdminCatalogItem): AdminCatalogPayload => ({
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
-
-const getStoredUserRole = (): AdminRole | undefined => {
-  try {
-    const rawUser = localStorage.getItem('user');
-    const role = rawUser ? (JSON.parse(rawUser) as { role?: string }).role : undefined;
-
-    return role === 'USER' || role === 'ADMIN' || role === 'SUPER_ADMIN' ? role : undefined;
-  } catch {
-    return undefined;
-  }
-};
 
 const isAdminAuthUser = (user: unknown): user is AdminAuthUser => {
   if (!user || typeof user !== 'object') {
@@ -168,12 +144,14 @@ export const useAdmin = (currentUserRole?: AdminRole): UseAdminReturn => {
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchJson = useCallback(async <T,>(path: string, init?: RequestInit) => {
+    const headers = new Headers(init?.headers);
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json');
+    }
+
     const response = await apiFetch(getApiUrl(path), {
       ...init,
-      headers: {
-        ...getAuthHeaders(),
-        ...init?.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -324,7 +302,7 @@ export const useAdmin = (currentUserRole?: AdminRole): UseAdminReturn => {
       );
       await syncCurrentUser();
 
-      const canUndoRoleChange = (currentUserRole ?? getStoredUserRole()) === 'SUPER_ADMIN';
+      const canUndoRoleChange = currentUserRole === 'SUPER_ADMIN';
 
       showUndoNotification({
         title: canUndoRoleChange ? 'Роль обновлена' : 'Изменение применено',
