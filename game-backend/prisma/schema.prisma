@@ -23,67 +23,93 @@ enum Role {
   SUPER_ADMIN
 }
 
-model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  login        String   @unique
-  passwordHash String
-  refreshTokenHash String?
-  firstName    String
-  secondName   String
-  gender       String
-  birthDate    DateTime
-  avatarUrl    String?
-  role         Role   @default(USER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  theme        String   @default("light")
-  profileId        Int             @unique
-  profile          Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+}
 
-  inventoryItems   InventoryItem[] 
+model User {
+  id               Int      @id @default(autoincrement())
+  email            String   @unique
+  login            String   @unique
+  passwordHash     String
+  refreshTokenHash String?
+  firstName        String
+  secondName       String
+  gender           String
+  birthDate        DateTime
+  avatarUrl        String?
+  role             Role     @default(USER)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  theme            String   @default("light")
+  profileId        Int      @unique
+  profile          Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  inventoryItems      InventoryItem[]
+  sentFriendships     Friendship[]    @relation("FriendshipRequester")
+  receivedFriendships Friendship[]    @relation("FriendshipAddressee")
 }
 
 model Profile {
-  id          Int    @id @default(autoincrement())
-  totalGames  Int    @default(0)
-  wins        Int    @default(0)
-  losses      Int    @default(0)
-  draws       Int    @default(0)
-  maxStreak   Int    @default(0)
-  rating      Int    @default(0)
-  credits     Int    @default(0)
-  gems        Int    @default(0)
-  experience  Int    @default(0)
-  level       Int    @default(1)
+  id         Int @id @default(autoincrement())
+  totalGames Int @default(0)
+  wins       Int @default(0)
+  losses     Int @default(0)
+  draws      Int @default(0)
+  maxStreak  Int @default(0)
+  rating     Int @default(0)
+  credits    Int @default(0)
+  gems       Int @default(0)
+  experience Int @default(0)
+  level      Int @default(1)
 
-  user        User?
+  user User?
 }
 
 model CatalogItem {
-  id             Int             @id @default(autoincrement())
-  slug           String          @unique
-  name           String
-  description    String
-  rarity         String
-  type           String
-  price          Int
-  currency       String          @default("credits")
+  id          Int    @id @default(autoincrement())
+  slug        String @unique
+  name        String
+  description String
+  rarity      String
+  type        String
+  price       Int
+  currency    String @default("credits")
 
   inventoryItems InventoryItem[]
 }
 
 model InventoryItem {
-  id             Int         @id @default(autoincrement())
-  userId         Int
-  catalogItemId  Int
-  receivedAt     DateTime    @default(now())
-  isEquipped     Boolean     @default(false)
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  catalogItemId Int
+  receivedAt    DateTime @default(now())
+  isEquipped    Boolean  @default(false)
 
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  catalogItem    CatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogItem CatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, catalogItemId])
   @@index([userId])
   @@index([catalogItemId])
-  @@unique([userId, catalogItemId])
+}
+
+model Friendship {
+  id          Int              @id @default(autoincrement())
+  requesterId Int
+  addresseeId Int
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
+  @@index([status])
 }

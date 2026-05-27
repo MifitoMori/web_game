@@ -1,2 +1,1 @@
-import * as path from 'path';
-console.log('Путь к pages:', path.resolve('src/pages'));
+console.log('Path to pages: src/pages');

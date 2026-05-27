@@ -1,6 +1,6 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Navbar, Stack, NavLink as MantineNavLink } from '@mantine/core';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Box, Stack, NavLink as MantineNavLink } from '@mantine/core';
 import { 
   IconHome, 
   IconUser, 
@@ -20,8 +20,10 @@ const navItems = [
 ];
 
 const Navigation: React.FC = () => {
+  const location = useLocation();
+
   return (
-    <Navbar p="xs">
+    <Box component="nav" p="xs">
       <Stack gap="xs">
         {navItems.map((item) => (
           <MantineNavLink
@@ -31,11 +33,11 @@ const Navigation: React.FC = () => {
             label={item.label}
             leftSection={<item.icon size={20} />}
             variant="light"
-            active={(location) => location.pathname === item.path}
+            active={location.pathname === item.path}
           />
         ))}
       </Stack>
-    </Navbar>
+    </Box>
   );
 };
 

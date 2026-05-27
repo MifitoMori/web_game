@@ -3,71 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Container,
-  Divider,
   Grid,
   Group,
   Modal,
   Paper,
-  Select,
   Skeleton,
   Stack,
-  Switch,
   Text,
-  TextInput,
   Title,
   Loader,
   Center,
 } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { IconLock, IconPlayerPlay, IconUsers, IconSearch, IconX } from '@tabler/icons-react';
+import { IconPlayerPlay, IconUsers, IconSearch, IconX } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import FriendsList from '@components/lobby/FriendsList/FriendsList';
 import PlayerStatus from '@components/lobby/PlayerStatus/PlayerStatus';
 import Shop from '@components/lobby/Shop/Shop';
 import { useAuth } from '@hooks/useAuth';
+import { useFriends } from '@hooks/useFriends';
 import { useProfile } from '@hooks/useProfile';
-import type { Friend, PlayerStats } from '@app-types/lobby';
+import type { PlayerStats } from '@app-types/lobby';
 import { io, Socket } from 'socket.io-client';
 import classes from './LobbyPage.module.css';
-
-const mockFriends: Friend[] = [
-  {
-    id: '1',
-    nickname: 'GameMaster',
-    level: 42,
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=GameMaster',
-    friendshipDate: new Date('2024-01-15'),
-    lastPlayed: new Date(),
-  },
-  {
-    id: '2',
-    nickname: 'ProGamer',
-    level: 38,
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ProGamer',
-    friendshipDate: new Date('2024-02-20'),
-  },
-  {
-    id: '3',
-    nickname: 'NoobSlayer',
-    level: 56,
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=NoobSlayer',
-    friendshipDate: new Date('2023-12-10'),
-  },
-  {
-    id: '4',
-    nickname: 'CasualPlayer',
-    level: 12,
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=CasualPlayer',
-    friendshipDate: new Date('2024-03-01'),
-  },
-  {
-    id: '5',
-    nickname: 'SpeedRunner',
-    level: 89,
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SpeedRunner',
-    friendshipDate: new Date('2024-01-05'),
-  },
-];
 
 // Сервис для определения IP
 class NetworkService {
@@ -105,6 +62,20 @@ class NetworkService {
 const LobbyPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const {
+    friends,
+    incomingRequests,
+    outgoingRequests,
+    isLoading: isFriendsLoading,
+    isRequestsLoading,
+    searchUsers,
+    getFriendProfile,
+    sendRequest,
+    acceptRequest,
+    declineRequest,
+    cancelRequest,
+    removeFriend,
+  } = useFriends();
   const { credits, gems, isProfileReady, profileData, purchaseItem } = useProfile();
   const [gameMode, setGameMode] = useState<'solo' | 'multi'>('solo');
   const [searching, setSearching] = useState(false);
@@ -404,7 +375,20 @@ const LobbyPage: React.FC = () => {
         </Grid.Col>
 
         <Grid.Col span={{ base: 12, md: 3 }}>
-          <FriendsList friends={mockFriends} />
+          <FriendsList
+            friends={friends}
+            incomingRequests={incomingRequests}
+            outgoingRequests={outgoingRequests}
+            isLoading={isFriendsLoading}
+            isRequestsLoading={isRequestsLoading}
+            onSearchUsers={searchUsers}
+            onGetFriendProfile={getFriendProfile}
+            onSendRequest={sendRequest}
+            onAcceptRequest={acceptRequest}
+            onDeclineRequest={declineRequest}
+            onCancelRequest={cancelRequest}
+            onRemoveFriend={removeFriend}
+          />
         </Grid.Col>
       </Grid>
     </Container>

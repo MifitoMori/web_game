@@ -24,12 +24,12 @@
 
 .friendItem {
   transition: background-color 0.2s;
+}
+
+.openableFriendItem {
   cursor: pointer;
 }
 
-.friendItem:hover {
-  background: light-dark(
-    var(--mantine-color-gray-0),
-    var(--mantine-color-dark-6)
-  );
+.openableFriendItem:hover {
+  background: light-dark(var(--mantine-color-blue-0), var(--mantine-color-blue-9));
 }

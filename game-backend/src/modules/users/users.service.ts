@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { FriendshipStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -163,6 +165,68 @@ export class UsersService {
       },
       profile: user.profile,
       inventory,
+    };
+  }
+
+  async getPublicProfileView(viewerId: number, targetUserId: number) {
+    if (viewerId === targetUserId) {
+      throw new BadRequestException('Для своего профиля используйте /profile');
+    }
+
+    const friendship = await this.prisma.friendship.findFirst({
+      where: {
+        status: FriendshipStatus.ACCEPTED,
+        OR: [
+          { requesterId: viewerId, addresseeId: targetUserId },
+          { requesterId: targetUserId, addresseeId: viewerId },
+        ],
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!friendship) {
+      throw new ForbiddenException('Профиль доступен только друзьям');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: {
+        id: true,
+        login: true,
+        firstName: true,
+        secondName: true,
+        avatarUrl: true,
+        createdAt: true,
+        profile: {
+          select: {
+            totalGames: true,
+            wins: true,
+            losses: true,
+            draws: true,
+            maxStreak: true,
+            rating: true,
+            level: true,
+          },
+        },
+      },
+    });
+
+    if (!user?.profile) {
+      throw new NotFoundException('Профиль пользователя не найден');
+    }
+
+    return {
+      user: {
+        id: user.id,
+        login: user.login,
+        firstName: user.firstName,
+        secondName: user.secondName,
+        avatarUrl: user.avatarUrl,
+        createdAt: user.createdAt,
+      },
+      profile: user.profile,
     };
   }
 

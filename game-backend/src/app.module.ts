@@ -8,6 +8,7 @@ import { ShopModule } from './modules/shop/shop.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { GameModule } from './modules/game/game.module';
 import { NetworkModule } from './modules/network/network.module';
+import { FriendsModule } from './modules/friends/friends.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { NetworkModule } from './modules/network/network.module';
     UsersModule,
     ShopModule,
     AdminModule,
+    FriendsModule,
     NetworkModule,
     GameModule
   ],

@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { EquipItemDto } from './dto/equip-item.dto';
@@ -21,6 +30,15 @@ export class UsersController {
     @Req() req: { user: { userId: number; login: string; role: Role } },
   ) {
     return this.usersService.getProfileView(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/profile')
+  getPublicProfile(
+    @Req() req: { user: { userId: number; login: string; role: Role } },
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.usersService.getPublicProfileView(req.user.userId, id);
   }
 
   @UseGuards(JwtAuthGuard)
