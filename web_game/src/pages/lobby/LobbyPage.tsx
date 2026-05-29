@@ -82,7 +82,6 @@ const LobbyPage: React.FC = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [serverIp, setServerIp] = useState<string>('localhost');
 
-  // Подключение к WebSocket при монтировании компонента
   useEffect(() => {
     const initNetwork = async () => {
       const networkService = NetworkService.getInstance();
@@ -110,7 +109,6 @@ const LobbyPage: React.FC = () => {
     };
   }, []);
 
-  // Обработчики WebSocket событий
   useEffect(() => {
     if (!socket) return;
 
@@ -128,7 +126,6 @@ const LobbyPage: React.FC = () => {
         color: 'green',
       });
       
-      // Переходим в игру с параметрами мультиплеера
       navigate('/game', { 
         state: { 
           isMultiplayer: true,
@@ -197,12 +194,10 @@ const LobbyPage: React.FC = () => {
     
     setSearching(true);
     
-    // Подключаемся к сокету, если ещё не подключены
     if (!socket.connected) {
       socket.connect();
     }
-    
-    // Отправляем запрос на поиск матча
+
     socket.emit('findMatch', {});
   };
 
