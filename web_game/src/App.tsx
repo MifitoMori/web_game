@@ -23,7 +23,6 @@ import RegisterPage from '@pages/auth/RegisterPage';
 //Основные страницы
 import LobbyPage from '@pages/lobby/LobbyPage';
 import ProfilePage from '@pages/profile/ProfilePage';
-import ShopPage from '@pages/shop/ShopPage';
 import LeaderboardPage from '@pages/leaderboard/LeaderboardPage';
 import SettingsPage from '@pages/settings/SettingsPage';
 import GamePage from '@pages/game/GamePage';
@@ -130,7 +129,6 @@ function App() {
                 <Route path="/" element={<Navigate to="/lobby" replace />} />
                 <Route path="/lobby" element={<LobbyPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/shop" element={<ShopPage />} />
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>

@@ -26,6 +26,7 @@ import {
   IconMail,
   IconStar,
   IconTrophy,
+  IconSettings,
 } from '@tabler/icons-react';
 import { useAuth } from '@hooks/useAuth';
 import { useProfile } from '@hooks/useProfile';
@@ -162,6 +163,16 @@ const ProfilePage: React.FC = () => {
               </Group>
               <Progress value={levelProgress} size="md" color="blue" striped animated />
             </div>
+
+            <Button
+              variant="light"
+              leftSection={<IconSettings size={20} />}
+              fullWidth
+              mt="xs"
+              onClick={() => navigate('/settings')}
+            >
+              Настройки
+            </Button>
 
             <Button
               mt="md"
