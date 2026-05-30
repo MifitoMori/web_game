@@ -25,7 +25,6 @@ import {
   IconLogout,
   IconMail,
   IconStar,
-  IconTrophy,
   IconSettings,
 } from '@tabler/icons-react';
 import { useAuth } from '@hooks/useAuth';
@@ -99,9 +98,6 @@ const ProfilePage: React.FC = () => {
             </Text>
 
             <Group justify="center" mt="md" gap="xs">
-              <Badge size="lg" variant="gradient" gradient={{ from: 'blue', to: 'cyan' }}>
-                {profile.rank}
-              </Badge>
               <Badge size="lg" variant="light" color="grape">
                 LVL {profile.level}
               </Badge>
@@ -110,12 +106,6 @@ const ProfilePage: React.FC = () => {
             <Divider my="md" />
 
             <Stack gap="sm">
-              <Group>
-                <ThemeIcon variant="light" size="sm">
-                  <IconTrophy size={16} />
-                </ThemeIcon>
-                <Text size="sm">Рейтинг: {profile.rank}</Text>
-              </Group>
               <Group>
                 <ThemeIcon variant="light" size="sm" color="yellow">
                   <IconCoin size={16} />

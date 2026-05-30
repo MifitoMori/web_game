@@ -8,7 +8,6 @@ type BackendProfile = {
   totalGames: number;
   wins: number;
   losses: number;
-  rating: number;
   credits: number;
   gems: number;
   experience: number;
@@ -21,7 +20,7 @@ type BackendInventoryItem = {
   name: string;
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  type: 'skin' | 'trail' | 'effect' | 'title';
+  type: 'skin' | 'trail' | 'title';
   equipped: boolean;
   unlocked: boolean;
 };
@@ -60,30 +59,6 @@ const extractErrorMessage = async (response: Response) => {
 
 const getNextLevelExp = (level: number) => Math.max(level * 250, 250);
 
-const getRank = (rating: number) => {
-  if (rating >= 2500) {
-    return 'Легенда';
-  }
-
-  if (rating >= 1800) {
-    return 'Алмаз';
-  }
-
-  if (rating >= 1200) {
-    return 'Платина';
-  }
-
-  if (rating >= 800) {
-    return 'Золото';
-  }
-
-  if (rating >= 400) {
-    return 'Серебро';
-  }
-
-  return 'Бронза';
-};
-
 const buildStats = (profile: BackendProfile): GameStats => {
   const winRate = profile.totalGames > 0 ? (profile.wins / profile.totalGames) * 100 : 0;
 
@@ -92,16 +67,12 @@ const buildStats = (profile: BackendProfile): GameStats => {
     wins: profile.wins,
     losses: profile.losses,
     winRate: Number(winRate.toFixed(1)),
-    totalScore: profile.rating,
-    averageScore:
-      profile.totalGames > 0 ? Number((profile.rating / profile.totalGames).toFixed(1)) : 0,
   };
 };
 
 const buildLoadout = (inventory: InventoryItem[]): Loadout => ({
   skin: inventory.find((item) => item.type === 'skin' && item.equipped),
   trail: inventory.find((item) => item.type === 'trail' && item.equipped),
-  effect: inventory.find((item) => item.type === 'effect' && item.equipped),
   title: inventory.find((item) => item.type === 'title' && item.equipped),
 });
 
@@ -129,7 +100,6 @@ const mapProfileData = (payload: BackendProfileResponse): ProfileData => {
     nextLevelExp: getNextLevelExp(payload.profile.level + 1),
     credits: payload.profile.credits,
     gems: payload.profile.gems,
-    rank: getRank(payload.profile.rating),
     joinDate: new Date(payload.user.createdAt),
   };
 

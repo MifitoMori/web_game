@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsPositive,
@@ -27,6 +28,7 @@ export class CreateCatalogItemDto {
 
   @IsString()
   @IsNotEmpty()
+  @IsIn(['skin', 'trail', 'title'])
   type: string;
 
   @IsNumber()

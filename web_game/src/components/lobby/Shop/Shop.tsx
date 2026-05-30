@@ -17,7 +17,6 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  IconBolt,
   IconCategory,
   IconCheck,
   IconCoin,
@@ -41,11 +40,10 @@ interface ShopProps {
 const categoryNames: Record<ShopCatalogItem['type'], string> = {
   skin: 'Скины',
   trail: 'Следы',
-  effect: 'Эффекты',
   title: 'Титулы',
 };
 
-const categoryOrder: ShopCatalogItem['type'][] = ['skin', 'trail', 'effect', 'title'];
+const categoryOrder: ShopCatalogItem['type'][] = ['skin', 'trail', 'title'];
 
 const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
   const [opened, { open, close }] = useDisclosure(false);
@@ -134,8 +132,6 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
         return <IconCube size={20} />;
       case 'trail':
         return <IconSparkles size={20} />;
-      case 'effect':
-        return <IconBolt size={20} />;
       case 'title':
         return <IconCrown size={20} />;
       default:
@@ -149,8 +145,6 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
         return 'Скин';
       case 'trail':
         return 'След';
-      case 'effect':
-        return 'Эффект';
       case 'title':
         return 'Титул';
       default:

@@ -2,6 +2,6 @@ import { IsIn, IsString } from 'class-validator';
 
 export class UnequipItemDto {
   @IsString()
-  @IsIn(['skin', 'trail', 'effect', 'title'])
-  type: 'skin' | 'trail' | 'effect' | 'title';
+  @IsIn(['skin', 'trail', 'title'])
+  type: 'skin' | 'trail' | 'title';
 }

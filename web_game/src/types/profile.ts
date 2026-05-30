@@ -10,7 +10,6 @@ export interface UserProfile {
   nextLevelExp: number;
   credits: number;
   gems: number;
-  rank: string;
   joinDate: Date;
 }
 
@@ -19,15 +18,13 @@ export interface GameStats {
   wins: number;
   losses: number;
   winRate: number;
-  totalScore: number;
-  averageScore: number;
 }
 
 export interface InventoryItem {
   id: string;
   slug?: string;
   name: string;
-  type: 'skin' | 'trail' | 'effect' | 'title';
+  type: 'skin' | 'trail' | 'title';
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   equipped: boolean;
@@ -37,7 +34,6 @@ export interface InventoryItem {
 export interface Loadout {
   skin?: InventoryItem;
   trail?: InventoryItem;
-  effect?: InventoryItem;
   title?: InventoryItem;
 }
 

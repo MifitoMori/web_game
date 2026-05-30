@@ -181,8 +181,16 @@ class MultiplayerSocket {
       this.socket?.on('playerReloadConfirmed', callback);
     }
 
+    onPlayerReloadRejected(callback) {
+      this.socket?.on('playerReloadRejected', callback);
+    }
+
     onItemsSync(callback) {
       this.socket?.on('itemsSync', callback);
+    }
+
+    onCollectItemRejected(callback) {
+      this.socket?.on('collectItemRejected', callback);
     }
 
     onItemCollected(callback) {
@@ -207,6 +215,14 @@ class MultiplayerSocket {
   
     onOpponentLeft(callback) {
       this.socket?.on('opponentLeft', callback);
+    }
+
+    onOpponentDisconnected(callback) {
+      this.socket?.on('opponentDisconnected', callback);
+    }
+
+    onOpponentReconnected(callback) {
+      this.socket?.on('opponentReconnected', callback);
     }
 
     onOpponentJoinedGameRoom(callback) {

@@ -3,7 +3,7 @@ export type SeedCatalogItem = {
   name: string;
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  type: 'skin' | 'trail' | 'effect' | 'title';
+  type: 'skin' | 'trail' | 'title';
   price: number;
   currency: 'credits' | 'gems';
 };
@@ -71,24 +71,6 @@ export const catalogItems: SeedCatalogItem[] = [
     rarity: 'legendary',
     price: 200,
     currency: 'gems',
-  },
-  {
-    slug: 'victory-effect',
-    name: 'Эффект победы',
-    type: 'effect',
-    description: 'Взрыв конфетти в момент победы.',
-    rarity: 'legendary',
-    price: 300,
-    currency: 'gems',
-  },
-  {
-    slug: 'defeat-effect',
-    name: 'Эффект поражения',
-    type: 'effect',
-    description: 'Эффект дыма при поражении.',
-    rarity: 'rare',
-    price: 1500,
-    currency: 'credits',
   },
   {
     slug: 'conqueror-title',

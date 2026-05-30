@@ -31,7 +31,6 @@ export class AdminService {
         totalGames: true,
         wins: true,
         losses: true,
-        rating: true,
         credits: true,
         gems: true,
         experience: true,
@@ -132,6 +131,11 @@ export class AdminService {
 
   async findAllCatalogItems() {
     return this.prisma.catalogItem.findMany({
+      where: {
+        type: {
+          in: ['skin', 'trail', 'title'],
+        },
+      },
       orderBy: { id: 'asc' },
       select: {
         id: true,

@@ -6,6 +6,8 @@ export interface Player {
   nickname: string;
   joinedAt: number;
   gameSocketId?: string;
+  disconnectedAt?: number;
+  reconnectDeadline?: number;
 }
 
 export interface PlayerPosition {
@@ -28,6 +30,8 @@ export interface PlayerGameState {
   maxReserveAmmo: number;
   position: PlayerPosition;
   lastUpdateAt: number;
+  disconnectedAt?: number;
+  reconnectDeadline?: number;
 }
 
 export type GameItemType = 'health' | 'ammo';
@@ -124,16 +128,8 @@ export class GameService {
         this.waitingPlayers.delete(socketId);
         
         // Создаем комнату
-        const roomId = this.generateRoomId();
-        const room: GameRoom = {
-          id: roomId,
-          players: [waitingPlayer, player],
-          createdAt: Date.now(),
-          status: 'waiting',
-          state: this.createRoomState([waitingPlayer, player]),
-        };
-        
-        this.activeRooms.set(roomId, room);
+        const room = this.createMatchRoom([waitingPlayer, player]);
+        const roomId = room.id;
         this.logger.log(`Создана комната ${roomId} для игроков ${waitingPlayer.nickname} и ${player.nickname}`);
         
         return { found: true, roomId, opponent: waitingPlayer };
@@ -141,6 +137,15 @@ export class GameService {
     }
     
     return { found: false };
+  }
+
+  createDirectMatch(playerA: Player, playerB: Player): { roomId: string } {
+    const room = this.createMatchRoom([playerA, playerB]);
+    this.logger.log(
+      `Создана комната ${room.id} по приглашению для игроков ${playerA.nickname} и ${playerB.nickname}`,
+    );
+
+    return { roomId: room.id };
   }
 
   removeFromWaiting(socketId: string): boolean {
@@ -214,6 +219,72 @@ export class GameService {
     }
 
     return null;
+  }
+
+  markPlayerDisconnected(
+    roomId: string,
+    userId: number,
+    reconnectDeadline: number,
+  ): boolean {
+    const room = this.activeRooms.get(roomId);
+    const player = room?.players.find((item) => item.userId === userId);
+    const playerState = room?.state.players[userId];
+
+    if (!room || !player || !playerState) {
+      return false;
+    }
+
+    const disconnectedAt = Date.now();
+    player.disconnectedAt = disconnectedAt;
+    player.reconnectDeadline = reconnectDeadline;
+    playerState.disconnectedAt = disconnectedAt;
+    playerState.reconnectDeadline = reconnectDeadline;
+    playerState.lastUpdateAt = disconnectedAt;
+
+    return true;
+  }
+
+  clearPlayerDisconnected(roomId: string, userId: number): boolean {
+    const room = this.activeRooms.get(roomId);
+    const player = room?.players.find((item) => item.userId === userId);
+    const playerState = room?.state.players[userId];
+
+    if (!room || !player || !playerState) {
+      return false;
+    }
+
+    const wasDisconnected =
+      !!player.disconnectedAt ||
+      !!player.reconnectDeadline ||
+      !!playerState.disconnectedAt ||
+      !!playerState.reconnectDeadline;
+
+    delete player.disconnectedAt;
+    delete player.reconnectDeadline;
+    delete playerState.disconnectedAt;
+    delete playerState.reconnectDeadline;
+
+    return wasDisconnected;
+  }
+
+  isRoomWaitingForReconnect(roomId: string): boolean {
+    const room = this.activeRooms.get(roomId);
+
+    if (!room || room.status !== 'playing') {
+      return false;
+    }
+
+    return room.players.some((player) => !!player.disconnectedAt);
+  }
+
+  getDisconnectedPlayer(roomId: string): Player | undefined {
+    const room = this.activeRooms.get(roomId);
+
+    if (!room || room.status !== 'playing') {
+      return undefined;
+    }
+
+    return room.players.find((player) => !!player.disconnectedAt);
   }
 
   isGameSocketParticipant(
@@ -489,6 +560,21 @@ export class GameService {
 
   private generateRoomId(): string {
     return `room_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  }
+
+  private createMatchRoom(players: Player[]): GameRoom {
+    const roomId = this.generateRoomId();
+    const room: GameRoom = {
+      id: roomId,
+      players,
+      createdAt: Date.now(),
+      status: 'waiting',
+      state: this.createRoomState(players),
+    };
+
+    this.activeRooms.set(roomId, room);
+
+    return room;
   }
 
   private createRoomState(players: Player[]): GameRoomState {

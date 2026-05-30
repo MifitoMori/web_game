@@ -69,7 +69,6 @@ const rarityOptions = [
 const typeOptions = [
   { value: 'skin', label: 'Скин' },
   { value: 'trail', label: 'След' },
-  { value: 'effect', label: 'Эффект' },
   { value: 'title', label: 'Титул' },
 ];
 

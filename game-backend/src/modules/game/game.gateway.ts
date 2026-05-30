@@ -10,11 +10,11 @@ import {
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { Role } from '@prisma/client';
+import { FriendshipStatus, Role } from '@prisma/client';
 import { Server, Socket } from 'socket.io';
 import { createCorsOriginDelegate } from '../../common/cors';
 import { PrismaService } from '../../prisma/prisma.service';
-import { GameItem, GameService, PlayerGameState } from './game.service';
+import { GameItem, GameService, Player, PlayerGameState } from './game.service';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 
@@ -87,6 +87,17 @@ type CollectItemPayload = {
   itemId: string;
 };
 
+type GameInvite = {
+  id: string;
+  inviterId: number;
+  inviterNickname: string;
+  inviterSocketId: string;
+  inviteeId: number;
+  inviteeNickname: string;
+  expiresAt: number;
+  timeout: NodeJS.Timeout;
+};
+
 const GAME_WORLD_LIMITS = {
   minX: 20,
   maxX: 1280,
@@ -96,6 +107,8 @@ const GAME_WORLD_LIMITS = {
 };
 
 const PLAYER_HIT_DAMAGE = 10;
+const GAME_INVITE_TTL_MS = 60000;
+const GAME_RECONNECT_GRACE_MS = 30000;
 const WIN_REWARD = {
   experience: 100,
   credits: 50,
@@ -143,6 +156,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private readonly logger = new Logger(GameGateway.name);
+  private readonly connectedSocketsByUser = new Map<number, Set<string>>();
+  private readonly gameInvites = new Map<string, GameInvite>();
+  private readonly reconnectTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     private readonly gameService: GameService,
@@ -207,6 +223,142 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private getPublicRoomItems(roomId: string): GameItem[] {
     return this.gameService.getRoomItems(roomId);
+  }
+
+  private addUserSocket(userId: number, socketId: string) {
+    const sockets = this.connectedSocketsByUser.get(userId) ?? new Set<string>();
+    sockets.add(socketId);
+    this.connectedSocketsByUser.set(userId, sockets);
+  }
+
+  private removeUserSocket(userId: number | undefined, socketId: string) {
+    if (!userId) {
+      return;
+    }
+
+    const sockets = this.connectedSocketsByUser.get(userId);
+
+    if (!sockets) {
+      return;
+    }
+
+    sockets.delete(socketId);
+
+    if (sockets.size === 0) {
+      this.connectedSocketsByUser.delete(userId);
+    }
+  }
+
+  private getUserSocketId(userId: number) {
+    return Array.from(this.connectedSocketsByUser.get(userId) ?? [])[0];
+  }
+
+  private emitToUser(userId: number, event: string, payload: unknown) {
+    for (const socketId of this.connectedSocketsByUser.get(userId) ?? []) {
+      this.server.to(socketId).emit(event, payload);
+    }
+  }
+
+  private clearGameInvite(inviteId: string) {
+    const invite = this.gameInvites.get(inviteId);
+
+    if (!invite) {
+      return;
+    }
+
+    clearTimeout(invite.timeout);
+    this.gameInvites.delete(inviteId);
+  }
+
+  private getReconnectTimerKey(roomId: string, userId: number) {
+    return `${roomId}:${userId}`;
+  }
+
+  private clearReconnectTimer(roomId: string, userId: number) {
+    const key = this.getReconnectTimerKey(roomId, userId);
+    const timer = this.reconnectTimers.get(key);
+
+    if (!timer) {
+      return;
+    }
+
+    clearTimeout(timer);
+    this.reconnectTimers.delete(key);
+  }
+
+  private clearRoomReconnectTimers(roomId: string) {
+    for (const [key, timer] of this.reconnectTimers.entries()) {
+      if (!key.startsWith(`${roomId}:`)) {
+        continue;
+      }
+
+      clearTimeout(timer);
+      this.reconnectTimers.delete(key);
+    }
+  }
+
+  private startReconnectGracePeriod(
+    roomId: string,
+    disconnectedPlayer: Player,
+    opponent: Player,
+  ) {
+    this.clearReconnectTimer(roomId, disconnectedPlayer.userId);
+
+    const reconnectDeadline = Date.now() + GAME_RECONNECT_GRACE_MS;
+    this.gameService.markPlayerDisconnected(
+      roomId,
+      disconnectedPlayer.userId,
+      reconnectDeadline,
+    );
+
+    const key = this.getReconnectTimerKey(roomId, disconnectedPlayer.userId);
+    const timer = setTimeout(async () => {
+      this.reconnectTimers.delete(key);
+
+      const room = this.gameService.getRoom(roomId);
+
+      if (!room || room.status !== 'playing') {
+        return;
+      }
+
+      await this.finishMatch(
+        roomId,
+        opponent.userId,
+        disconnectedPlayer.userId,
+        'disconnect',
+      );
+    }, GAME_RECONNECT_GRACE_MS);
+
+    this.reconnectTimers.set(key, timer);
+    this.server.to(roomId).emit('opponentDisconnected', {
+      userId: disconnectedPlayer.userId,
+      nickname: disconnectedPlayer.nickname,
+      reconnectDeadline,
+    });
+    this.logger.log(
+      `Player ${disconnectedPlayer.nickname} disconnected from room ${roomId}; waiting ${GAME_RECONNECT_GRACE_MS}ms for reconnect`,
+    );
+  }
+
+  private findActiveInviteBetween(userAId: number, userBId: number) {
+    return Array.from(this.gameInvites.values()).find(
+      (invite) =>
+        ((invite.inviterId === userAId && invite.inviteeId === userBId) ||
+          (invite.inviterId === userBId && invite.inviteeId === userAId)) &&
+        invite.expiresAt > Date.now(),
+    );
+  }
+
+  private emitMatchFoundToPlayer(roomId: string, player: Player) {
+    this.server.to(player.socketId).emit('matchFound', {
+      roomId,
+      player: this.toPublicPlayerState(
+        this.gameService.getPlayerState(roomId, player.userId),
+      ),
+      opponent: this.toPublicPlayerState(
+        this.gameService.getOpponentState(roomId, player.userId),
+      ),
+    });
   }
 
   private validatePlayerUpdatePayload(
@@ -338,6 +490,24 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return false;
   }
 
+  private ensureGameplayAvailable(
+    client: AuthenticatedClient,
+    roomId: string,
+    rejectedEvent?: string,
+  ) {
+    if (!this.gameService.isRoomWaitingForReconnect(roomId)) {
+      return true;
+    }
+
+    if (rejectedEvent) {
+      client.emit(rejectedEvent, {
+        message: 'Game is paused while opponent reconnects',
+      });
+    }
+
+    return false;
+  }
+
   private calculateLevel(experience: number) {
     let level = 1;
 
@@ -358,6 +528,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    if (!client.userId) {
+      client.emit('authError', { message: 'Unauthorized' });
+      client.disconnect(true);
+      return;
+    }
+
+    this.addUserSocket(client.userId, client.id);
     this.logger.log(`Game socket connected: ${client.nickname} (${client.id})`);
     client.emit('authSuccess', {
       userId: client.userId,
@@ -367,20 +544,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleDisconnect(client: ClientWithUser) {
     this.logger.log(`Game socket disconnected: ${client.id}`);
+    this.removeUserSocket(client.userId, client.id);
     this.gameService.removeFromWaiting(client.id);
 
     const detached = this.gameService.detachGameSocket(client.id);
 
     if (detached && detached.room.status !== 'ended') {
-      if (
-        detached.room.status === 'playing' &&
-        detached.opponent?.gameSocketId
-      ) {
-        await this.finishMatch(
+      if (detached.room.status === 'playing' && detached.opponent) {
+        this.startReconnectGracePeriod(
           detached.room.id,
-          detached.opponent.userId,
-          detached.player.userId,
-          'disconnect',
+          detached.player,
+          detached.opponent,
         );
         return;
       }
@@ -477,6 +651,232 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  @SubscribeMessage('inviteFriendToGame')
+  async handleInviteFriendToGame(
+    @ConnectedSocket() client: ClientWithUser,
+    @MessageBody() data: { friendId: number },
+  ) {
+    if (!this.ensureAuthenticated(client)) {
+      return;
+    }
+
+    const friendId = Number(data?.friendId);
+
+    if (!Number.isInteger(friendId) || friendId <= 0 || friendId === client.userId) {
+      client.emit('gameInviteRejected', { message: 'Некорректный игрок для приглашения' });
+      return;
+    }
+
+    const friendship = await this.prisma.friendship.findFirst({
+      where: {
+        status: FriendshipStatus.ACCEPTED,
+        OR: [
+          { requesterId: client.userId, addresseeId: friendId },
+          { requesterId: friendId, addresseeId: client.userId },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!friendship) {
+      client.emit('gameInviteRejected', { message: 'Приглашать в игру можно только друзей' });
+      return;
+    }
+
+    if (this.gameService.getActiveRoomByUserId(client.userId)) {
+      client.emit('gameInviteRejected', { message: 'У вас уже есть активный матч' });
+      return;
+    }
+
+    if (this.gameService.getActiveRoomByUserId(friendId)) {
+      client.emit('gameInviteRejected', { message: 'Друг уже находится в матче' });
+      return;
+    }
+
+    if (this.gameService.isUserWaiting(client.userId)) {
+      client.emit('gameInviteRejected', { message: 'Остановите поиск матча перед приглашением' });
+      return;
+    }
+
+    if (this.gameService.isUserWaiting(friendId)) {
+      client.emit('gameInviteRejected', { message: 'Друг уже ищет матч' });
+      return;
+    }
+
+    const inviteeSocketId = this.getUserSocketId(friendId);
+
+    if (!inviteeSocketId) {
+      client.emit('gameInviteRejected', { message: 'Друг сейчас не в сети' });
+      return;
+    }
+
+    if (this.findActiveInviteBetween(client.userId, friendId)) {
+      client.emit('gameInviteRejected', { message: 'Приглашение уже отправлено' });
+      return;
+    }
+
+    const friend = await this.prisma.user.findUnique({
+      where: { id: friendId },
+      select: { login: true },
+    });
+
+    if (!friend) {
+      client.emit('gameInviteRejected', { message: 'Друг не найден' });
+      return;
+    }
+
+    const inviteId = `invite_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const expiresAt = Date.now() + GAME_INVITE_TTL_MS;
+    const timeout = setTimeout(() => {
+      this.gameInvites.delete(inviteId);
+      client.emit('gameInviteExpired', { inviteId });
+      this.emitToUser(friendId, 'gameInviteExpired', { inviteId });
+    }, GAME_INVITE_TTL_MS);
+
+    this.gameInvites.set(inviteId, {
+      id: inviteId,
+      inviterId: client.userId,
+      inviterNickname: client.nickname,
+      inviterSocketId: client.id,
+      inviteeId: friendId,
+      inviteeNickname: friend.login,
+      expiresAt,
+      timeout,
+    });
+
+    client.emit('gameInviteSent', {
+      inviteId,
+      friendId,
+      friendNickname: friend.login,
+      expiresAt,
+    });
+    this.emitToUser(friendId, 'gameInviteReceived', {
+      inviteId,
+      expiresAt,
+      inviter: {
+        id: client.userId,
+        nickname: client.nickname,
+      },
+    });
+  }
+
+  @SubscribeMessage('declineGameInvite')
+  handleDeclineGameInvite(
+    @ConnectedSocket() client: ClientWithUser,
+    @MessageBody() data: { inviteId: string },
+  ) {
+    if (!this.ensureAuthenticated(client)) {
+      return;
+    }
+
+    const invite = this.gameInvites.get(data?.inviteId);
+
+    if (!invite || invite.inviteeId !== client.userId) {
+      return;
+    }
+
+    this.clearGameInvite(invite.id);
+    this.server.to(invite.inviterSocketId).emit('gameInviteDeclined', {
+      inviteId: invite.id,
+      friendId: client.userId,
+      friendNickname: client.nickname,
+    });
+  }
+
+  @SubscribeMessage('acceptGameInvite')
+  handleAcceptGameInvite(
+    @ConnectedSocket() client: ClientWithUser,
+    @MessageBody() data: { inviteId: string },
+  ) {
+    if (!this.ensureAuthenticated(client)) {
+      return;
+    }
+
+    const invite = this.gameInvites.get(data?.inviteId);
+
+    if (!invite || invite.inviteeId !== client.userId || invite.expiresAt <= Date.now()) {
+      client.emit('gameInviteRejected', { message: 'Приглашение больше недействительно' });
+      return;
+    }
+
+    if (
+      this.gameService.getActiveRoomByUserId(invite.inviterId) ||
+      this.gameService.getActiveRoomByUserId(invite.inviteeId) ||
+      this.gameService.isUserWaiting(invite.inviterId) ||
+      this.gameService.isUserWaiting(invite.inviteeId)
+    ) {
+      this.clearGameInvite(invite.id);
+      client.emit('gameInviteRejected', { message: 'Нельзя начать матч: один из игроков уже занят' });
+      this.server.to(invite.inviterSocketId).emit('gameInviteRejected', {
+        message: 'Нельзя начать матч: один из игроков уже занят',
+      });
+      return;
+    }
+
+    const inviterSocketId =
+      this.connectedSocketsByUser.get(invite.inviterId)?.has(invite.inviterSocketId)
+        ? invite.inviterSocketId
+        : this.getUserSocketId(invite.inviterId);
+
+    if (!inviterSocketId) {
+      this.clearGameInvite(invite.id);
+      client.emit('gameInviteRejected', { message: 'Пригласивший игрок вышел из сети' });
+      return;
+    }
+
+    this.clearGameInvite(invite.id);
+
+    const inviterPlayer: Player = {
+      socketId: inviterSocketId,
+      userId: invite.inviterId,
+      nickname: invite.inviterNickname,
+      joinedAt: Date.now(),
+    };
+    const inviteePlayer: Player = {
+      socketId: client.id,
+      userId: client.userId,
+      nickname: client.nickname,
+      joinedAt: Date.now(),
+    };
+    const { roomId } = this.gameService.createDirectMatch(inviterPlayer, inviteePlayer);
+
+    this.emitMatchFoundToPlayer(roomId, inviterPlayer);
+    this.emitMatchFoundToPlayer(roomId, inviteePlayer);
+  }
+
+  @SubscribeMessage('checkActiveMatch')
+  handleCheckActiveMatch(
+    @ConnectedSocket() client: ClientWithUser,
+    @MessageBody() data: { roomId: string },
+  ) {
+    if (!this.ensureAuthenticated(client)) {
+      return;
+    }
+
+    if (!data?.roomId) {
+      client.emit('activeMatchStatus', {
+        exists: false,
+        message: 'roomId is required',
+      });
+      return;
+    }
+
+    const room = this.gameService.getRoom(data.roomId);
+    const isParticipant = room?.players.some(
+      (player) => player.userId === client.userId,
+    );
+
+    client.emit('activeMatchStatus', {
+      roomId: data.roomId,
+      exists: !!room && room.status !== 'ended' && !!isParticipant,
+      status: room?.status,
+      message:
+        room && isParticipant
+          ? undefined
+          : 'Комната матча больше недоступна',
+    });
+  }
+
   @SubscribeMessage('joinGameRoom')
   handleJoinGameRoom(
     @ConnectedSocket() client: ClientWithUser,
@@ -504,16 +904,39 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.join(data.roomId);
 
+    const wasReconnecting = this.gameService.clearPlayerDisconnected(
+      data.roomId,
+      client.userId,
+    );
+
+    if (wasReconnecting) {
+      this.clearReconnectTimer(data.roomId, client.userId);
+      client.to(data.roomId).emit('opponentReconnected', {
+        userId: client.userId,
+        nickname: client.nickname,
+      });
+    }
+
     this.logger.log(
       `Player ${client.nickname} joined game room ${data.roomId} with socket ${client.id}`,
     );
 
+    const disconnectedPlayer = this.gameService.getDisconnectedPlayer(data.roomId);
+
     client.emit('gameRoomJoined', {
       roomId: data.roomId,
+      status: joinResult.room.status,
       player: this.toPublicPlayerState(joinResult.playerState),
       opponent: this.toPublicPlayerState(joinResult.opponentState),
       items: this.getPublicRoomItems(data.roomId),
       allPlayersConnected: joinResult.allGameSocketsJoined,
+      reconnectingPlayer: disconnectedPlayer
+        ? {
+            userId: disconnectedPlayer.userId,
+            nickname: disconnectedPlayer.nickname,
+            reconnectDeadline: disconnectedPlayer.reconnectDeadline,
+          }
+        : null,
     });
 
     client.to(data.roomId).emit('opponentJoinedGameRoom', {
@@ -568,6 +991,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    if (!this.ensureGameplayAvailable(client, data.roomId)) {
+      return;
+    }
+
     const playerState = this.gameService.updatePlayerPosition(
       data.roomId,
       client.userId,
@@ -617,6 +1044,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     if (!this.ensureGameStarted(client, data.roomId)) {
+      return;
+    }
+
+    if (!this.ensureGameplayAvailable(client, data.roomId, 'playerShootRejected')) {
       return;
     }
 
@@ -677,6 +1108,19 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     if (!this.ensureGameStarted(client, data.roomId)) {
+      return;
+    }
+
+    if (this.gameService.isRoomWaitingForReconnect(data.roomId)) {
+      const playerState = this.gameService.getPlayerState(data.roomId, client.userId);
+
+      client.emit('playerReloadRejected', {
+        message: 'Game is paused while opponent reconnects',
+        ammo: playerState?.ammo,
+        maxAmmo: playerState?.maxAmmo,
+        reserveAmmo: playerState?.reserveAmmo,
+        maxReserveAmmo: playerState?.maxReserveAmmo,
+      });
       return;
     }
 
@@ -778,6 +1222,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    this.clearRoomReconnectTimers(roomId);
     this.server.to(roomId).emit('gameEnd', {
       winnerId,
       loserId,
@@ -813,6 +1258,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     if (!this.ensureGameStarted(client, data.roomId)) {
+      return;
+    }
+
+    if (!this.ensureGameplayAvailable(client, data.roomId, 'playerHitRejected')) {
       return;
     }
 
@@ -882,6 +1331,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    if (!this.ensureGameplayAvailable(client, data.roomId, 'collectItemRejected')) {
+      client.emit('itemsSync', {
+        items: this.getPublicRoomItems(data.roomId),
+      });
+      return;
+    }
+
     const collectResult = this.gameService.collectItem(
       data.roomId,
       client.userId,
@@ -927,6 +1383,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     if (!this.ensureGameStarted(client, data.roomId)) {
+      return;
+    }
+
+    if (!this.ensureGameplayAvailable(client, data.roomId, 'playerDeathRejected')) {
       return;
     }
 

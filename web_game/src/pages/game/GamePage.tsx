@@ -2,6 +2,31 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Text, Center, Loader } from '@mantine/core';
 
+const ACTIVE_MATCH_STORAGE_KEY = 'activeMultiplayerMatch';
+
+type GameLocationState = {
+  isMultiplayer?: boolean;
+  roomId?: string;
+  opponent?: any;
+  playerId?: number;
+  playerName?: string;
+  serverIp?: string;
+};
+
+const readStoredMatchState = (): GameLocationState => {
+  try {
+    const rawState = sessionStorage.getItem(ACTIVE_MATCH_STORAGE_KEY);
+    return rawState ? JSON.parse(rawState) : {};
+  } catch {
+    sessionStorage.removeItem(ACTIVE_MATCH_STORAGE_KEY);
+    return {};
+  }
+};
+
+const clearStoredMatchState = () => {
+  sessionStorage.removeItem(ACTIVE_MATCH_STORAGE_KEY);
+};
+
 // Сервис для определения IP
 class NetworkService {
   private static instance: NetworkService;
@@ -40,14 +65,12 @@ const GamePage: React.FC = () => {
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Получаем параметры из location state
-  const locationState = location.state as {
-    isMultiplayer?: boolean;
-    roomId?: string;
-    opponent?: any;
-    playerId?: number;
-    playerName?: string;
-    serverIp?: string;
-  } || {};
+  const routeState = (location.state as GameLocationState | null) || {};
+  const storedMatchState = readStoredMatchState();
+  const locationState: GameLocationState =
+    routeState.roomId || routeState.isMultiplayer !== undefined
+      ? routeState
+      : storedMatchState;
 
   // Определяем URL игры при загрузке компонента
   useEffect(() => {
@@ -109,6 +132,7 @@ const GamePage: React.FC = () => {
       const { type, data } = event.data || {};
       
       if (type === 'GAME_END') {
+        clearStoredMatchState();
         setGameResult(data?.result);
         setShowExitModal(true);
       }
@@ -123,16 +147,28 @@ const GamePage: React.FC = () => {
   }, [gameUrl]);
 
   const handleExit = () => {
+    clearStoredMatchState();
     setShowExitModal(false);
+
+    if (!gameResult && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({
+        type: 'LEAVE_GAME'
+      }, gameUrl);
+      window.setTimeout(() => navigate('/lobby'), 250);
+      return;
+    }
+
     navigate('/lobby');
   };
 
   const handleResumeGame = () => {
     setShowExitModal(false);
     if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.focus();
       iframeRef.current.contentWindow.postMessage({
         type: 'RESUME_GAME'
       }, gameUrl);
+      window.setTimeout(() => iframeRef.current?.focus(), 0);
     }
   };
 
@@ -155,7 +191,7 @@ const GamePage: React.FC = () => {
           <Button onClick={handleRetry} variant="light">
             Попробовать снова
           </Button>
-          <Button onClick={() => navigate('/lobby')} variant="subtle">
+          <Button onClick={handleExit} variant="subtle">
             Вернуться в лобби
           </Button>
         </div>

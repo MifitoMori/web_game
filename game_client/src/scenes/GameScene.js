@@ -16,7 +16,10 @@ export default class GameScene extends Phaser.Scene {
         this.lastSyncTime = 0;
         this.syncInterval = 50;
         this.multiplayerStarted = false;
+        this.multiplayerReconnectPaused = false;
         this.waitingForStartText = null;
+        this.reconnectText = null;
+        this.reconnectCountdownTimer = null;
         this.multiplayerSceneReady = false;
         this.pendingGameStart = null;
         this.pendingItemsSync = null;
@@ -188,7 +191,20 @@ export default class GameScene extends Phaser.Scene {
                 this.createOpponentFromServer(joinData.opponent);
                 this.syncItemsFromServer(joinData.items || []);
 
-                if (!joinData.allPlayersConnected) {
+                if (joinData.status === 'playing') {
+                    this.multiplayerStarted = true;
+                    this.hideSearchingUI();
+                    this.hideWaitingForGameStartUI();
+
+                    if (
+                        joinData.reconnectingPlayer &&
+                        joinData.reconnectingPlayer.userId !== multiplayerSocket.userId
+                    ) {
+                        this.showReconnectPauseUI(
+                            joinData.reconnectingPlayer.reconnectDeadline || Date.now() + 30000
+                        );
+                    }
+                } else if (!joinData.allPlayersConnected) {
                     this.showWaitingForGameStartUI();
                 }
             } else {
@@ -397,6 +413,68 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    showReconnectPauseUI(reconnectDeadline) {
+        this.multiplayerReconnectPaused = true;
+        this.mousePressed = false;
+
+        if (this.player?.body) {
+            this.player.body.setVelocity(0, 0);
+        }
+
+        const secondsLeft = Math.max(Math.ceil((reconnectDeadline - Date.now()) / 1000), 1);
+        const text = `Соперник переподключается...\nМатч на паузе: ${secondsLeft} сек.`;
+
+        if (this.reconnectText) {
+            this.reconnectText.setText(text);
+            return;
+        }
+
+        this.reconnectText = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY,
+            text,
+            {
+                fontSize: '28px',
+                fill: '#ffffff',
+                align: 'center',
+                backgroundColor: '#000000cc',
+                padding: { x: 20, y: 15 }
+            }
+        ).setOrigin(0.5).setDepth(1001);
+
+        this.reconnectCountdownTimer = this.time.addEvent({
+            delay: 1000,
+            loop: true,
+            callback: () => {
+                if (!this.reconnectText || !this.multiplayerReconnectPaused) {
+                    return;
+                }
+
+                const nextSecondsLeft = Math.max(
+                    Math.ceil((reconnectDeadline - Date.now()) / 1000),
+                    1
+                );
+                this.reconnectText.setText(
+                    `Соперник переподключается...\nМатч на паузе: ${nextSecondsLeft} сек.`
+                );
+            }
+        });
+    }
+
+    hideReconnectPauseUI() {
+        this.multiplayerReconnectPaused = false;
+
+        if (this.reconnectCountdownTimer) {
+            this.reconnectCountdownTimer.remove(false);
+            this.reconnectCountdownTimer = null;
+        }
+
+        if (this.reconnectText) {
+            this.reconnectText.destroy();
+            this.reconnectText = null;
+        }
+    }
+
     handleGameStart(data) {
         const players = data?.players || [];
         const playerState = players.find((player) => player.userId === multiplayerSocket.userId);
@@ -524,8 +602,28 @@ export default class GameScene extends Phaser.Scene {
             }
         });
 
+        multiplayerSocket.onPlayerReloadRejected((data) => {
+            if (this.player) {
+                this.player.isReloading = false;
+                this.player.reloadBarBg?.setVisible(false);
+                this.player.reloadBar?.setVisible(false);
+
+                if (typeof data?.ammo === 'number') {
+                    this.player.ammo = data.ammo;
+                }
+
+                if (typeof data?.reserveAmmo === 'number') {
+                    this.player.reserveAmmo = data.reserveAmmo;
+                }
+            }
+        });
+
         multiplayerSocket.onItemsSync((data) => {
             this.syncItemsFromServer(data?.items || []);
+        });
+
+        multiplayerSocket.onCollectItemRejected(() => {
+            this.pendingItemCollections.clear();
         });
 
         multiplayerSocket.onItemCollected((data) => {
@@ -564,8 +662,18 @@ export default class GameScene extends Phaser.Scene {
             this.gameDefeat();
         });
 
+        multiplayerSocket.onOpponentDisconnected((data) => {
+            this.showReconnectPauseUI(data?.reconnectDeadline || Date.now() + 30000);
+        });
+
+        multiplayerSocket.onOpponentReconnected(() => {
+            this.hideReconnectPauseUI();
+            this.showMessage('Соперник вернулся', 1500);
+        });
+
         // Конец игры
         multiplayerSocket.onGameEnd((data) => {
+            this.hideReconnectPauseUI();
             if (data.winnerId === multiplayerSocket.userId) {
                 this.gameVictory();
             } else {
@@ -610,7 +718,13 @@ export default class GameScene extends Phaser.Scene {
     }
 
     requestPlayerShot(pointer) {
-        if (!this.player || this.player.ammo <= 0 || this.player.isReloading) return;
+        if (
+            this.isInputLocked ||
+            this.multiplayerReconnectPaused ||
+            !this.player ||
+            this.player.ammo <= 0 ||
+            this.player.isReloading
+        ) return;
 
         const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.x, pointer.y);
         const offsetX = Math.cos(angle) * 5;
@@ -847,6 +961,7 @@ export default class GameScene extends Phaser.Scene {
         this.shotDelay = 150;
         
         this.input.on('pointerdown', (pointer) => {
+            if (this.isInputLocked || this.multiplayerReconnectPaused) return;
             if (pointer.leftButtonDown()) this.mousePressed = true;
         });
         
@@ -858,6 +973,10 @@ export default class GameScene extends Phaser.Scene {
         
         // Перезарядка
         this.input.keyboard.on('keydown-R', () => {
+            if (this.isInputLocked || this.multiplayerReconnectPaused) {
+                return;
+            }
+
             this.player.reload(() => {
                 if (this.isMultiplayer && multiplayerSocket.connected && multiplayerSocket.roomId) {
                     multiplayerSocket.reload();
@@ -937,6 +1056,10 @@ export default class GameScene extends Phaser.Scene {
     }
 
     collectServerItem(itemObject) {
+        if (this.isInputLocked || this.multiplayerReconnectPaused) {
+            return;
+        }
+
         if (!itemObject?.serverId || this.pendingItemCollections.has(itemObject.serverId)) {
             return;
         }
@@ -1001,10 +1124,17 @@ export default class GameScene extends Phaser.Scene {
         
         // Слушаем сообщения от родительского окна
         window.addEventListener('message', (event) => {
-            if (event.origin !== window.location.origin) return;
+            if (window.parent !== window && event.source !== window.parent) return;
             
             if (event.data.type === 'RESUME_GAME') {
                 this.unlockPlayerControl();
+                this.restoreGameFocus();
+            }
+
+            if (event.data.type === 'LEAVE_GAME') {
+                if (this.isMultiplayer && multiplayerSocket.socket) {
+                    multiplayerSocket.leaveRoom();
+                }
             }
         });
     }
@@ -1012,6 +1142,8 @@ export default class GameScene extends Phaser.Scene {
     lockPlayerControl() {
         if (this.isInputLocked) return;
         this.isInputLocked = true;
+        this.mousePressed = false;
+        this.input.keyboard?.resetKeys?.();
         if (this.player && this.player.body) {
             this.player.body.setVelocity(0, 0);
         }
@@ -1025,6 +1157,17 @@ export default class GameScene extends Phaser.Scene {
         this.isInputLocked = false;
     }
 
+    restoreGameFocus() {
+        window.focus();
+        this.game.canvas?.focus?.();
+        this.input.keyboard?.resetKeys?.();
+
+        this.time.delayedCall(0, () => {
+            window.focus();
+            this.game.canvas?.focus?.();
+        });
+    }
+
     update() {
         if (this.gameOver) return;
 
@@ -1036,7 +1179,21 @@ export default class GameScene extends Phaser.Scene {
             return;
         }
 
-        if (this.isMultiplayer && !this.multiplayerStarted) {
+        if (this.isInputLocked) {
+            this.mousePressed = false;
+
+            if (this.player.body) {
+                this.player.body.setVelocity(0, 0);
+            }
+
+            this.hud?.update();
+            return;
+        }
+
+        if (
+            this.isMultiplayer &&
+            (!this.multiplayerStarted || this.multiplayerReconnectPaused)
+        ) {
             if (this.player.body) {
                 this.player.body.setVelocity(0, 0);
             }

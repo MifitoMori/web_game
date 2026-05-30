@@ -29,7 +29,6 @@ export class UsersService {
         totalGames: true,
         wins: true,
         losses: true,
-        rating: true,
         credits: true,
         gems: true,
         experience: true,
@@ -106,7 +105,6 @@ export class UsersService {
             totalGames: true,
             wins: true,
             losses: true,
-            rating: true,
             credits: true,
             gems: true,
             experience: true,
@@ -114,6 +112,13 @@ export class UsersService {
           },
         },
         inventoryItems: {
+          where: {
+            catalogItem: {
+              type: {
+                in: ['skin', 'trail', 'title'],
+              },
+            },
+          },
           orderBy: {
             receivedAt: 'desc',
           },
@@ -200,7 +205,6 @@ export class UsersService {
             totalGames: true,
             wins: true,
             losses: true,
-            rating: true,
             level: true,
           },
         },
@@ -272,7 +276,7 @@ export class UsersService {
     });
   }
 
-  async unequipItem(userId: number, type: 'skin' | 'trail' | 'effect' | 'title') {
+  async unequipItem(userId: number, type: 'skin' | 'trail' | 'title') {
     const updatedItems = await this.prisma.inventoryItem.updateMany({
       where: {
         userId,

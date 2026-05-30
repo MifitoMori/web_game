@@ -11,6 +11,11 @@ export class ShopService {
 
   async getCatalogForUser(userId: number) {
     const catalogItems = await this.prisma.catalogItem.findMany({
+      where: {
+        type: {
+          in: ['skin', 'trail', 'title'],
+        },
+      },
       orderBy: { id: 'asc' },
       include: {
         inventoryItems: {
@@ -36,8 +41,13 @@ export class ShopService {
 
   async purchaseItem(userId: number, slug: string) {
     return this.prisma.$transaction(async (tx) => {
-      const catalogItem = await tx.catalogItem.findUnique({
-        where: { slug },
+      const catalogItem = await tx.catalogItem.findFirst({
+        where: {
+          slug,
+          type: {
+            in: ['skin', 'trail', 'title'],
+          },
+        },
       });
 
       if (!catalogItem) {

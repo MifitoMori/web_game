@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Badge, Button, Grid, Group, Paper, Tabs, Text, ThemeIcon, Title } from '@mantine/core';
 import {
-  IconBolt,
   IconCategory,
   IconCrown,
   IconCube,
@@ -59,8 +58,6 @@ const ProfileInventory: React.FC<ProfileInventoryProps> = ({
         return <IconCube size={16} />;
       case 'trail':
         return <IconSparkles size={16} />;
-      case 'effect':
-        return <IconBolt size={16} />;
       case 'title':
         return <IconCrown size={16} />;
       default:
@@ -90,9 +87,6 @@ const ProfileInventory: React.FC<ProfileInventoryProps> = ({
           </Tabs.Tab>
           <Tabs.Tab value="trail" leftSection={<IconSparkles size={16} />}>
             Следы
-          </Tabs.Tab>
-          <Tabs.Tab value="effect" leftSection={<IconBolt size={16} />}>
-            Эффекты
           </Tabs.Tab>
           <Tabs.Tab value="title" leftSection={<IconCrown size={16} />}>
             Титулы

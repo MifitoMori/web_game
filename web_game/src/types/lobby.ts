@@ -43,7 +43,6 @@ export interface PublicFriendProfile {
     totalGames: number;
     wins: number;
     losses: number;
-    rating: number;
     level: number;
   };
 }

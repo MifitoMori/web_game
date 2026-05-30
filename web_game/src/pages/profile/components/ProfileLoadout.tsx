@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge, Group, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
-import { IconBolt, IconCrown, IconCube, IconSparkles } from '@tabler/icons-react';
+import { IconCrown, IconCube, IconSparkles } from '@tabler/icons-react';
 import type { Loadout } from '@app-types/profile';
 import classes from './ProfileLoadout.module.css';
 
@@ -11,8 +11,7 @@ interface ProfileLoadoutProps {
 const ProfileLoadout: React.FC<ProfileLoadoutProps> = ({ loadout }) => {
   const loadoutItems = [
     { type: 'skin', label: 'Скин', icon: IconCube, item: loadout.skin },
-    { type: 'trail', label: 'След', icon: IconSparkles, item: loadout.trail },
-    { type: 'effect', label: 'Эффект', icon: IconBolt, item: loadout.effect },
+    { type: 'trail', label: 'След', icon: IconSparkles, item: loadout.trail },
     { type: 'title', label: 'Титул', icon: IconCrown, item: loadout.title },
   ];
 
