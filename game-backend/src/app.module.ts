@@ -7,6 +7,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ShopModule } from './modules/shop/shop.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { GameModule } from './modules/game/game.module';
+import { LoggerModule } from './common/logger/logger.module';
 import { NetworkModule } from './modules/network/network.module';
 import { FriendsModule } from './modules/friends/friends.module';
 
@@ -17,6 +18,7 @@ import { FriendsModule } from './modules/friends/friends.module';
     }),
     PrismaModule,
     HealthModule,
+    LoggerModule,
     AuthModule,
     UsersModule,
     ShopModule,

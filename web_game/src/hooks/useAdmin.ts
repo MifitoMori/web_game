@@ -7,6 +7,9 @@ import {
   refreshCurrentUser,
   type AuthUserUpdatedDetail,
 } from '@services/api';
+import { logger } from '../utils/logger';
+
+const adminLogger = logger.child('useAdmin');
 
 export type AdminRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 
@@ -240,6 +243,7 @@ export const useAdmin = (currentUserRole?: AdminRole): UseAdminReturn => {
   );
 
   const refreshData = useCallback(async () => {
+    adminLogger.debug('Обновление данных админ-панели');
     setIsLoading(true);
 
     try {
@@ -250,7 +254,9 @@ export const useAdmin = (currentUserRole?: AdminRole): UseAdminReturn => {
 
       setUsers(nextUsers);
       setCatalogItems(nextCatalogItems);
+      adminLogger.debug(`Загружено ${nextUsers.length} пользователей и ${nextCatalogItems.length} товаров`);
     } catch (error) {
+      adminLogger.error('Ошибка загрузки админ-панели', error as Error);
       notifications.show({
         title: 'Ошибка',
         message:
@@ -287,6 +293,7 @@ export const useAdmin = (currentUserRole?: AdminRole): UseAdminReturn => {
   }, [refreshData, syncCurrentUser]);
 
   const updateUserRole = async (userId: number, role: AdminRole) => {
+    adminLogger.debug(`Изменение роли пользователя ${userId} на ${role}`);
     const previousUser = users.find((user) => user.id === userId);
 
     setIsSaving(true);
@@ -301,6 +308,8 @@ export const useAdmin = (currentUserRole?: AdminRole): UseAdminReturn => {
         current.map((user) => (user.id === updatedUser.id ? updatedUser : user)),
       );
       await syncCurrentUser();
+
+      adminLogger.debug(`Роль пользователя ${userId} изменена с ${previousUser?.role} на ${role}`);
 
       const canUndoRoleChange = currentUserRole === 'SUPER_ADMIN';
 

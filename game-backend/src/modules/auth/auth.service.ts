@@ -12,6 +12,7 @@ import { LoginDto } from './dto/login.dto';
 import { UsersService } from '../users/users.service';
 import { createHash } from 'crypto';
 import { Role } from '@prisma/client';
+import { LoggerService } from '../../common/logger/logger.service';
 
 type AuthPayload = {
   sub: number;
@@ -21,11 +22,15 @@ type AuthPayload = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger: LoggerService;
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+    logger: LoggerService,
+  ) {
+    this.logger = logger.child('AuthService');
+  }
 
   get accessTokenExpiresIn() {
     return this.configService.get<SignOptions['expiresIn']>(
@@ -116,8 +121,11 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
+    this.logger.debug(`Начало регистрации: ${dto.login}`);
+
     const existingByEmail = await this.usersService.findByEmail(dto.email);
     if (existingByEmail) {
+      this.logger.warn(`Регистрация отклонена: email ${dto.email} уже существует`);
       throw new BadRequestException(
         'Пользователь с таким email уже существует',
       );
@@ -125,6 +133,7 @@ export class AuthService {
 
     const existingByLogin = await this.usersService.findByLogin(dto.login);
     if (existingByLogin) {
+      this.logger.warn(`Регистрация отклонена: login ${dto.login} уже существует`);
       throw new BadRequestException(
         'Пользователь с таким login уже существует',
       );
@@ -142,6 +151,8 @@ export class AuthService {
       birthDate: new Date(dto.birthDate),
     });
 
+    this.logger.log(`Пользователь создан: ID ${user.id}, login ${user.login}`);
+
     return this.buildAuthResponse(user);
   }
 
@@ -149,6 +160,7 @@ export class AuthService {
     const user = await this.usersService.findByLogin(dto.login);
 
     if (!user) {
+      this.logger.warn(`Неудачный вход: пользователь ${dto.login} не найден`);
       throw new UnauthorizedException('Неверный логин или пароль');
     }
 
@@ -158,9 +170,11 @@ export class AuthService {
     );
 
     if (!isPasswordValid) {
+      this.logger.warn(`Неудачный вход: неверный пароль для ${dto.login}`);
       throw new UnauthorizedException('Неверный логин или пароль');
     }
-
+    
+    this.logger.log(`Успешный вход: ${dto.login} (ID: ${user.id})`);
     return this.buildAuthResponse(user);
   }
 
