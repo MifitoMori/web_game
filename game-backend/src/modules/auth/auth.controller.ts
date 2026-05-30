@@ -4,6 +4,7 @@ import type { Request, Response, CookieOptions } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { LoggerService } from '../../common/logger/logger.service'; 
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
@@ -15,10 +16,15 @@ type AuthTokens = {
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger: LoggerService; //
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-  ) {}
+    logger: LoggerService,
+  ) {
+    this.logger = logger.child('AuthController');
+  }
 
   private get isCookieSecure() {
     return (
@@ -146,10 +152,18 @@ export class AuthController {
     @Body() dto: RegisterDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const authData = await this.authService.register(dto);
-    this.setAuthCookies(res, authData);
+    this.logger.debug(`Попытка регистрации: ${dto.login} (${dto.email})`);
 
-    return authData;
+    try {
+      const authData = await this.authService.register(dto);
+      this.setAuthCookies(res, authData);
+      
+      this.logger.log(`Успешная регистрация: ${dto.login} (ID: ${authData.user.id})`); // ✅ Добавить
+      return authData;
+    } catch (error) {
+      this.logger.error(`Ошибка регистрации: ${dto.login}`); // ✅ Добавить
+      throw error;
+    }
   }
 
   @Post('login')
@@ -157,10 +171,18 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const authData = await this.authService.login(dto);
-    this.setAuthCookies(res, authData);
-
-    return authData;
+    this.logger.debug(`Попытка входа: ${dto.login}`); // ✅ Добавить
+    
+    try {
+      const authData = await this.authService.login(dto);
+      this.setAuthCookies(res, authData);
+      
+      this.logger.log(`Успешный вход: ${dto.login} (ID: ${authData.user.id})`); // ✅ Добавить
+      return authData;
+    } catch (error) {
+      this.logger.warn(`Неудачная попытка входа: ${dto.login}`); // ✅ Добавить
+      throw error;
+    }
   }
 
   @Post('refresh')
