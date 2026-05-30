@@ -9,7 +9,6 @@ type BackendProfile = {
   wins: number;
   losses: number;
   credits: number;
-  gems: number;
   experience: number;
   level: number;
 };
@@ -99,7 +98,6 @@ const mapProfileData = (payload: BackendProfileResponse): ProfileData => {
     experience: payload.profile.experience,
     nextLevelExp: getNextLevelExp(payload.profile.level + 1),
     credits: payload.profile.credits,
-    gems: payload.profile.gems,
     joinDate: new Date(payload.user.createdAt),
   };
 
@@ -115,7 +113,6 @@ export const useProfile = () => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [credits, setCredits] = useState(0);
-  const [gems, setGems] = useState(0);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isProfileReady, setIsProfileReady] = useState(false);
 
@@ -136,7 +133,6 @@ export const useProfile = () => {
 
       setProfileData(mappedProfile);
       setCredits(mappedProfile.profile.credits);
-      setGems(mappedProfile.profile.gems);
       setInventory(mappedProfile.inventory);
       setIsProfileReady(true);
 
@@ -250,7 +246,6 @@ export const useProfile = () => {
       await loadProfile(false);
 
       setCredits(purchaseResult.balances.credits);
-      setGems(purchaseResult.balances.gems);
 
       notifications.show({
         title: 'Покупка совершена!',
@@ -275,7 +270,6 @@ export const useProfile = () => {
     isLoading,
     isProfileReady,
     credits,
-    gems,
     inventory,
     equipItem,
     unequipItem,

@@ -72,10 +72,10 @@ const typeOptions = [
   { value: 'title', label: 'Титул' },
 ];
 
-const currencyOptions = [
-  { value: 'credits', label: 'Кредиты' },
-  { value: 'gems', label: 'Гемы' },
-];
+const getOptionLabel = (
+  options: { value: string; label: string }[],
+  value: string,
+) => options.find((option) => option.value === value)?.label ?? value;
 
 const defaultCatalogForm: CatalogFormValues = {
   slug: '',
@@ -244,10 +244,6 @@ const AdminPage = () => {
       nextErrors.type = 'Выберите категорию';
     }
 
-    if (!catalogForm.currency) {
-      nextErrors.currency = 'Выберите валюту';
-    }
-
     setCatalogFormErrors(nextErrors);
 
     return Object.keys(nextErrors).length === 0;
@@ -316,18 +312,19 @@ const AdminPage = () => {
         size="xl"
       >
         <Stack gap="sm">
+          <TextInput
+            label="Название"
+            value={catalogForm.name}
+            error={catalogFormErrors.name}
+            onChange={(event) => handleCatalogFieldChange('name', event.currentTarget.value)}
+          />
+
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" verticalSpacing="sm">
             <TextInput
               label={slugLabel}
               value={catalogForm.slug}
               error={catalogFormErrors.slug}
               onChange={(event) => handleCatalogFieldChange('slug', event.currentTarget.value)}
-            />
-            <TextInput
-              label="Название"
-              value={catalogForm.name}
-              error={catalogFormErrors.name}
-              onChange={(event) => handleCatalogFieldChange('name', event.currentTarget.value)}
             />
             <Select
               label="Редкость"
@@ -352,14 +349,6 @@ const AdminPage = () => {
               value={catalogForm.price.toString()}
               error={catalogFormErrors.price}
               onChange={(event) => handleCatalogFieldChange('price', event.currentTarget.value)}
-            />
-            <Select
-              label="Валюта"
-              value={catalogForm.currency}
-              data={currencyOptions}
-              allowDeselect={false}
-              error={catalogFormErrors.currency}
-              onChange={(value) => value && handleCatalogFieldChange('currency', value)}
             />
           </SimpleGrid>
 
@@ -560,7 +549,6 @@ const AdminPage = () => {
                         <Table.Th>Категория</Table.Th>
                         <Table.Th>Редкость</Table.Th>
                         <Table.Th>Цена</Table.Th>
-                        <Table.Th>Валюта</Table.Th>
                         <Table.Th>Действия</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
@@ -578,11 +566,10 @@ const AdminPage = () => {
                           </Table.Td>
                           <Table.Td>{item.slug}</Table.Td>
                           <Table.Td>
-                            <Badge variant="light">{item.type}</Badge>
+                            <Badge variant="light">{getOptionLabel(typeOptions, item.type)}</Badge>
                           </Table.Td>
-                          <Table.Td>{item.rarity}</Table.Td>
+                          <Table.Td>{getOptionLabel(rarityOptions, item.rarity)}</Table.Td>
                           <Table.Td>{item.price}</Table.Td>
-                          <Table.Td>{item.currency}</Table.Td>
                           <Table.Td>
                             <Group gap="xs" wrap="nowrap">
                               <ActionIcon

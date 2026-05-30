@@ -74,7 +74,6 @@ export class ShopService {
           profile: {
             select: {
               credits: true,
-              gems: true,
             },
           },
         },
@@ -84,28 +83,15 @@ export class ShopService {
         throw new NotFoundException('Профиль пользователя не найден');
       }
 
-      const currentBalance =
-        catalogItem.currency === 'credits'
-          ? user.profile.credits
-          : user.profile.gems;
-
-      if (currentBalance < catalogItem.price) {
-        throw new BadRequestException(
-          catalogItem.currency === 'credits'
-            ? 'Недостаточно кредитов'
-            : 'Недостаточно гемов',
-        );
+      if (user.profile.credits < catalogItem.price) {
+        throw new BadRequestException('Недостаточно кредитов');
       }
 
       const updatedProfile = await tx.profile.update({
         where: { id: user.profileId },
-        data:
-          catalogItem.currency === 'credits'
-            ? { credits: { decrement: catalogItem.price } }
-            : { gems: { decrement: catalogItem.price } },
+        data: { credits: { decrement: catalogItem.price } },
         select: {
           credits: true,
-          gems: true,
         },
       });
 

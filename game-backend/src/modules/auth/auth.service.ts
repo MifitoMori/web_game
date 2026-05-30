@@ -75,7 +75,6 @@ export class AuthService {
       wins: number;
       losses: number;
       credits: number;
-      gems: number;
       experience: number;
       level: number;
     };

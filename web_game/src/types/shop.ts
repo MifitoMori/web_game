@@ -7,7 +7,7 @@ export interface ShopItem {
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   price: number;
-  currency: 'gems' | 'credits';
+  currency: 'credits';
   image?: string;
   preview?: string;
 }
@@ -28,7 +28,6 @@ export interface ShopPurchaseResponse {
   };
   balances: {
     credits: number;
-    gems: number;
   };
 }
 

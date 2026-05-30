@@ -5,7 +5,7 @@ export type SeedCatalogItem = {
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   type: 'skin' | 'trail' | 'title';
   price: number;
-  currency: 'credits' | 'gems';
+  currency: 'credits';
 };
 
 export const catalogItems: SeedCatalogItem[] = [
@@ -34,7 +34,7 @@ export const catalogItems: SeedCatalogItem[] = [
     description: 'Светящийся неоновый скин.',
     rarity: 'legendary',
     price: 150,
-    currency: 'gems',
+    currency: 'credits',
   },
   {
     slug: 'ice-skin',
@@ -61,7 +61,7 @@ export const catalogItems: SeedCatalogItem[] = [
     description: 'За персонажем остаётся россыпь искр.',
     rarity: 'epic',
     price: 75,
-    currency: 'gems',
+    currency: 'credits',
   },
   {
     slug: 'rainbow-trail',
@@ -70,7 +70,7 @@ export const catalogItems: SeedCatalogItem[] = [
     description: 'Переливающийся след всеми цветами радуги.',
     rarity: 'legendary',
     price: 200,
-    currency: 'gems',
+    currency: 'credits',
   },
   {
     slug: 'conqueror-title',
@@ -88,6 +88,6 @@ export const catalogItems: SeedCatalogItem[] = [
     description: 'Титул для настоящих легенд.',
     rarity: 'legendary',
     price: 500,
-    currency: 'gems',
+    currency: 'credits',
   },
 ];

@@ -32,7 +32,6 @@ export class AdminService {
         wins: true,
         losses: true,
         credits: true,
-        gems: true,
         experience: true,
         level: true,
       },

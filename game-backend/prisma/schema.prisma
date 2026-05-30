@@ -59,7 +59,6 @@ model Profile {
   wins       Int @default(0)
   losses     Int @default(0)
   credits    Int @default(0)
-  gems       Int @default(0)
   experience Int @default(0)
   level      Int @default(1)
 

@@ -37,5 +37,6 @@ export class CreateCatalogItemDto {
   
   @IsString()
   @IsNotEmpty()
+  @IsIn(['credits'])
   currency: string;
 }

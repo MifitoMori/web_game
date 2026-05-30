@@ -21,7 +21,6 @@ import {
   IconArrowLeft,
   IconCalendar,
   IconCoin,
-  IconDiamond,
   IconLogout,
   IconMail,
   IconStar,
@@ -111,12 +110,6 @@ const ProfilePage: React.FC = () => {
                   <IconCoin size={16} />
                 </ThemeIcon>
                 <Text size="sm">Кредиты: {profile.credits.toLocaleString()}</Text>
-              </Group>
-              <Group>
-                <ThemeIcon variant="light" size="sm" color="cyan">
-                  <IconDiamond size={16} />
-                </ThemeIcon>
-                <Text size="sm">Гемы: {profile.gems.toLocaleString()}</Text>
               </Group>
               <Group>
                 <ThemeIcon variant="light" size="sm" color="green">

@@ -91,7 +91,7 @@ const LobbyPage: React.FC = () => {
     cancelRequest,
     removeFriend,
   } = useFriends();
-  const { credits, gems, isProfileReady, profileData, purchaseItem } = useProfile();
+  const { credits, isProfileReady, profileData, purchaseItem } = useProfile();
   const [gameMode, setGameMode] = useState<'solo' | 'multi'>('solo');
   const [searching, setSearching] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -587,7 +587,7 @@ const LobbyPage: React.FC = () => {
                 <Skeleton height={20} mt="sm" radius="md" />
               </Paper>
             ) : (
-              <Shop credits={credits} gems={gems} onPurchase={purchaseItem} />
+              <Shop credits={credits} onPurchase={purchaseItem} />
             )}
           </Stack>
         </Grid.Col>

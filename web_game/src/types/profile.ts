@@ -9,7 +9,6 @@ export interface UserProfile {
   experience: number;
   nextLevelExp: number;
   credits: number;
-  gems: number;
   joinDate: Date;
 }
 
