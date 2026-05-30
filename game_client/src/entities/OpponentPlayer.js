@@ -24,75 +24,88 @@ export default class OpponentPlayer extends Phaser.Physics.Arcade.Image {
       this.weapon.setScale(1);
       this.weapon.setTint(0x88ff88);
       this.weapon.setDepth(2);
+      this.setAimRotation(0);
       
       // Имя оппонента
-      this.nameText = scene.add.text(x, y - 35, nickname, {
-        fontSize: '14px',
-        fill: '#88ff88',
-        fontFamily: 'Arial',
-        stroke: '#000000',
-        strokeThickness: 2
-      }).setOrigin(0.5);
-      
       // Полоска здоровья
-      this.healthBarBg = scene.add.rectangle(x, y - 25, 50, 6, 0x000000, 0.7);
-      this.healthBarBg.setOrigin(0.5, 0.5);
-      
-      this.healthBar = scene.add.rectangle(x, y - 25, 50, 4, 0xff3333, 1);
-      this.healthBar.setOrigin(0.5, 0.5);
+    }
+
+    setAimRotation(bodyRotation) {
+      if (!this.weapon) return;
+
+      const weaponRotation = bodyRotation + 1.6;
+      this.weapon.setPosition(
+        this.x + Math.cos(weaponRotation) * 20,
+        this.y + Math.sin(weaponRotation) * 20
+      );
+      this.weapon.rotation = weaponRotation;
+    }
+
+    getClosestRotation(currentRotation, targetRotation) {
+      const diff = Math.atan2(
+        Math.sin(targetRotation - currentRotation),
+        Math.cos(targetRotation - currentRotation)
+      );
+
+      return currentRotation + diff;
     }
     
     updateFromServer(data) {
+      const bodyRotation = this.getClosestRotation(this.rotation, data.rotation);
+
       // Плавное перемещение (интерполяция)
       this.scene.tweens.add({
         targets: this,
         x: data.x,
         y: data.y,
-        rotation: data.rotation,
+        rotation: bodyRotation,
         duration: 50,
         ease: 'Linear'
       });
       
       // Обновление оружия
       if (this.weapon) {
+        const weaponRotation = this.getClosestRotation(
+          this.weapon.rotation,
+          data.rotation + 1.6
+        );
+
         this.scene.tweens.add({
           targets: this.weapon,
-          x: data.x + Math.cos(data.rotation) * 20,
-          y: data.y + Math.sin(data.rotation) * 20,
-          rotation: data.rotation,
+          x: data.x + Math.cos(weaponRotation) * 20,
+          y: data.y + Math.sin(weaponRotation) * 20,
+          rotation: weaponRotation,
           duration: 50,
           ease: 'Linear'
         });
       }
       
       // Обновление имени и хп-бара
-      this.nameText.setPosition(data.x, data.y - 35);
-      this.healthBarBg.setPosition(data.x, data.y - 25);
-      this.healthBar.setPosition(data.x, data.y - 25);
-      
       // Обновление HP
+      if (data.maxHp !== undefined) {
+        this.maxHp = data.maxHp;
+      }
+
       if (data.hp !== undefined) {
         this.hp = data.hp;
-        const percent = this.hp / this.maxHp;
-        this.healthBar.setSize(50 * percent, 4);
       }
     }
     
     takeDamage(amount) {
       this.hp = Math.max(0, this.hp - amount);
-      const percent = this.hp / this.maxHp;
-      this.healthBar.setSize(50 * percent, 4);
-      
       // Визуальный эффект
+      this.setTint(0xff8888);
+      this.scene.time.delayedCall(100, () => this.setTint(0x33ff33));
+    }
+
+    setServerHp(hp) {
+      this.hp = Math.max(0, Math.min(this.maxHp, hp));
       this.setTint(0xff8888);
       this.scene.time.delayedCall(100, () => this.setTint(0x33ff33));
     }
     
     destroy() {
       if (this.weapon) this.weapon.destroy();
-      if (this.nameText) this.nameText.destroy();
-      if (this.healthBarBg) this.healthBarBg.destroy();
-      if (this.healthBar) this.healthBar.destroy();
       super.destroy();
     }
   }

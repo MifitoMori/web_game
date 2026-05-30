@@ -39,18 +39,10 @@ class NetworkService {
   }
 
   async getServerIp(): Promise<string> {
-    try {
-      const response = await fetch('/api/network/ip', {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      this.serverIp = data.ip || 'localhost';
-      console.log('Server IP detected:', this.serverIp);
-      return this.serverIp;
-    } catch (error) {
-      console.warn('Failed to detect server IP, using localhost');
-      return 'localhost';
-    }
+    // Подключаемся к тому же хосту, на котором открыта страница,
+    // чтобы cookie с токеном совпадала с адресом сокета.
+    this.serverIp = window.location.hostname || 'localhost';
+    return this.serverIp;
   }
 
   async getWebSocketUrl(): Promise<string> {
@@ -159,6 +151,20 @@ const LobbyPage: React.FC = () => {
       });
     };
 
+    const handleMatchmakingRejected = (data: { code?: string; message?: string }) => {
+      setSearching(false);
+      notifications.show({
+        title:
+          data?.code === 'ALREADY_IN_MATCH'
+            ? 'Матч уже запущен'
+            : 'Поиск уже запущен',
+        message:
+          data?.message ||
+          'Нельзя запускать поиск матча из нескольких вкладок одновременно',
+        color: 'yellow',
+      });
+    };
+
     const handleAuthError = () => {
       setSearching(false);
       notifications.show({
@@ -172,6 +178,7 @@ const LobbyPage: React.FC = () => {
     socket.on('matchFound', handleMatchFound);
     socket.on('searchCancelled', handleSearchCancelled);
     socket.on('searchTimeout', handleSearchTimeout);
+    socket.on('matchmakingRejected', handleMatchmakingRejected);
     socket.on('authError', handleAuthError);
     socket.on('connect_error', handleAuthError);
 
@@ -180,6 +187,7 @@ const LobbyPage: React.FC = () => {
       socket.off('matchFound', handleMatchFound);
       socket.off('searchCancelled', handleSearchCancelled);
       socket.off('searchTimeout', handleSearchTimeout);
+      socket.off('matchmakingRejected', handleMatchmakingRejected);
       socket.off('authError', handleAuthError);
       socket.off('connect_error', handleAuthError);
     };
@@ -196,14 +204,21 @@ const LobbyPage: React.FC = () => {
     }
     
     setSearching(true);
-    
-    // Подключаемся к сокету, если ещё не подключены
-    if (!socket.connected) {
-      socket.connect();
+
+    // Если сокет уже аутентифицирован — ищем матч сразу.
+    if (socket.connected) {
+      socket.emit('findMatch', {});
+      return;
     }
-    
-    // Отправляем запрос на поиск матча
-    socket.emit('findMatch', {});
+
+    // Иначе findMatch отправляем только после authSuccess от сервера.
+    // Сервер выставляет userId в конце handleConnection (проверка JWT + запрос в БД),
+    // а это асинхронно. Если отправить findMatch сразу после connect(),
+    // сообщение обгоняет установку userId, и сервер рвёт сокет с authError.
+    socket.once('authSuccess', () => {
+      socket.emit('findMatch', {});
+    });
+    socket.connect();
   };
 
   const cancelSearch = () => {

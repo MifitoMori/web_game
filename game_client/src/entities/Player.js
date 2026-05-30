@@ -8,6 +8,8 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this.maxHp = 100;
         this.ammo = 30;
         this.maxAmmo = 30;
+        this.reserveAmmo = 30;
+        this.maxReserveAmmo = 30;
         this.isReloading = false;
         this.reloadDelay = 2000;
 
@@ -203,9 +205,52 @@ export default class Player extends Phaser.Physics.Arcade.Image {
             if (bullet.active) bullet.destroy();
         });
     }
+
+    createConfirmedShot(bulletData, bulletsGroup, ammo, reserveAmmo) {
+        if (typeof ammo === 'number') {
+            this.ammo = ammo;
+        }
+
+        if (typeof reserveAmmo === 'number') {
+            this.reserveAmmo = reserveAmmo;
+        }
+
+        const angle = bulletData.angle;
+        const spawnX = bulletData.x;
+        const spawnY = bulletData.y;
+
+        if (this.scene.effects) {
+            this.scene.effects.muzzleFlash(this.weapon.x, this.weapon.y, angle);
+        }
+
+        const collides = this.scene.physics.overlapRect(spawnX, spawnY, 1, 1)
+            .some(hit => hit.gameObject === this.scene.wallSegments);
+
+        if (collides) return;
+
+        const bullet = bulletsGroup.create(spawnX, spawnY, 'bullet');
+        bullet.owner = 'player';
+        bullet.setScale(1);
+        bullet.body.allowGravity = false;
+        bullet.rotation = angle + 1.6;
+
+        const bulletSpeed = 400;
+        bullet.body.setVelocity(
+            Math.cos(angle) * bulletSpeed,
+            Math.sin(angle) * bulletSpeed
+        );
+
+        if (Math.abs(angle) < 0.9) bullet.body.setSize(15, 7, true);
+        else if(Math.abs(angle) < 2.3) bullet.body.setSize(7, 15, true);
+        else if(Math.abs(angle) < 3.14) bullet.body.setSize(15, 7, true);
+
+        this.scene.time.delayedCall(2000, () => {
+            if (bullet.active) bullet.destroy();
+        });
+    }
     
-    reload() {
-        if (this.isReloading || this.ammo === this.maxAmmo) return;
+    reload(onComplete) {
+        if (this.isReloading || this.ammo === this.maxAmmo || this.reserveAmmo <= 0) return;
         
         this.isReloading = true;
         this.reloadBarBg.setVisible(true);
@@ -229,10 +274,15 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         updateBar();
         
         this.scene.time.delayedCall(this.reloadDelay, () => {
-            this.ammo = this.maxAmmo;
+            const neededAmmo = this.maxAmmo - this.ammo;
+            const loadedAmmo = Math.min(neededAmmo, this.reserveAmmo);
+
+            this.ammo += loadedAmmo;
+            this.reserveAmmo -= loadedAmmo;
             this.isReloading = false;
             this.reloadBarBg.setVisible(false);
             this.reloadBar.setVisible(false);
+            onComplete?.();
         });
     }
     
@@ -248,6 +298,17 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this.setTint(0xff3333);
         this.scene.time.delayedCall(100, () => this.clearTint());
     }
+
+    setServerHp(hp) {
+        this.hp = Math.max(0, Math.min(this.maxHp, hp));
+
+        if (this.scene.effects) {
+            this.scene.effects.bloodEffect(this.x, this.y);
+        }
+
+        this.setTint(0xff3333);
+        this.scene.time.delayedCall(100, () => this.clearTint());
+    }
     
     heal(amount) {
         this.hp = Math.min(this.maxHp, this.hp + amount);
@@ -257,6 +318,6 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
     
     addAmmo(amount) {
-        this.ammo = Math.min(this.maxAmmo, this.ammo + amount);
+        this.reserveAmmo = Math.min(this.maxReserveAmmo, this.reserveAmmo + amount);
     }
 }

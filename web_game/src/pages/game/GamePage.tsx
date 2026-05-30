@@ -15,18 +15,10 @@ class NetworkService {
   }
 
   async getServerIp(): Promise<string> {
-    try {
-      const response = await fetch('/api/network/ip', {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      this.serverIp = data.ip || 'localhost';
-      console.log('Server IP detected:', this.serverIp);
-      return this.serverIp;
-    } catch (error) {
-      console.warn('Failed to detect server IP, using localhost');
-      return 'localhost';
-    }
+    // Подключаемся к тому же хосту, на котором открыта страница,
+    // чтобы cookie с токеном совпадала с адресом сокета.
+    this.serverIp = window.location.hostname || 'localhost';
+    return this.serverIp;
   }
 
   async getGameUrl(): Promise<string> {
@@ -36,6 +28,7 @@ class NetworkService {
 }
 
 const GamePage: React.FC = () => {
+  const gameClientVersion = '20260530-hud-ammo';
   const navigate = useNavigate();
   const location = useLocation();
   const [showExitModal, setShowExitModal] = useState(false);
@@ -80,6 +73,7 @@ const GamePage: React.FC = () => {
   const getIframeSrc = () => {
     const baseUrl = gameUrl;
     const params = new URLSearchParams();
+    params.set('clientVersion', gameClientVersion);
     
     if (locationState.isMultiplayer !== undefined) {
       params.set('multiplayer', String(locationState.isMultiplayer));
@@ -131,14 +125,6 @@ const GamePage: React.FC = () => {
   const handleExit = () => {
     setShowExitModal(false);
     navigate('/lobby');
-  };
-
-  const handleRestart = () => {
-    setGameResult(null);
-    setShowExitModal(false);
-    if (iframeRef.current) {
-      iframeRef.current.src = getIframeSrc();
-    }
   };
 
   const handleResumeGame = () => {
@@ -273,21 +259,13 @@ const GamePage: React.FC = () => {
                 <Text size="sm" style={{ marginBottom: '30px', color: '#888' }}>
                   {gameResult === 'victory' 
                     ? '+100 опыта и 50 кредитов' 
-                    : '+10 опыта за участие'}
+                    : '+25 опыта и 10 кредитов'}
                 </Text>
                 <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
                   <Button 
-                    onClick={handleRestart} 
-                    color="blue" 
-                    size="lg"
-                  >
-                    Играть снова
-                  </Button>
-                  <Button 
                     onClick={handleExit} 
-                    variant="subtle" 
+                    color="blue"
                     size="lg"
-                    color="gray"
                   >
                     Выйти в лобби
                   </Button>

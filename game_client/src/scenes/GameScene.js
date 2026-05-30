@@ -1,11 +1,11 @@
-import Player from '../entities/Player.js';
-import Enemy from '../entities/Enemy.js';
-import OpponentPlayer from '../entities/OpponentPlayer.js';
-import HUD from '../ui/HUD.js';
-import AmmoPack from '../items/AmmoPack.js';
-import HealthPack from '../items/HealthPack.js';
-import Effects from '../utils/Effects.js'; 
-import { multiplayerSocket } from '../network/socket-client.js';
+import Player from '../entities/Player.js?v=20260530-hud-ammo';
+import Enemy from '../entities/Enemy.js?v=20260530-hud-ammo';
+import OpponentPlayer from '../entities/OpponentPlayer.js?v=20260530-hud-ammo';
+import HUD from '../ui/HUD.js?v=20260530-hud-ammo';
+import AmmoPack from '../items/AmmoPack.js?v=20260530-hud-ammo';
+import HealthPack from '../items/HealthPack.js?v=20260530-hud-ammo';
+import Effects from '../utils/Effects.js?v=20260530-hud-ammo'; 
+import { multiplayerSocket } from '../network/socket-client.js?v=20260530-hud-ammo';
 
 export default class GameScene extends Phaser.Scene {
     constructor() {
@@ -14,6 +14,13 @@ export default class GameScene extends Phaser.Scene {
         this.opponent = null;
         this.lastSyncTime = 0;
         this.syncInterval = 50;
+        this.multiplayerStarted = false;
+        this.waitingForStartText = null;
+        this.multiplayerSceneReady = false;
+        this.pendingGameStart = null;
+        this.pendingItemsSync = null;
+        this.serverItems = new Map();
+        this.pendingItemCollections = new Set();
     }
 
     init(data) {
@@ -89,7 +96,7 @@ export default class GameScene extends Phaser.Scene {
         this.setupWalls();
         
         // Создание игрока
-        this.player = new Player(this, 100, this.cameras.main.centerY);      
+        this.player = new Player(this, 100, this.cameras.main.centerY);
           
         if (this.isMultiplayer) {
             // Мультиплеерный режим
@@ -102,7 +109,11 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // Создание UI
-        this.hud = new HUD(this, this.player);
+        this.hud = new HUD(this, this.player, this.playerName);
+
+        if (this.opponent) {
+            this.hud.setOpponent(this.opponent, this.opponent.nickname);
+        }
 
         this.effects = new Effects(this);
         
@@ -117,6 +128,11 @@ export default class GameScene extends Phaser.Scene {
         this.enemyBullets = this.physics.add.group({
             maxSize: 100
         });
+
+        if (this.pendingItemsSync) {
+            this.syncItemsFromServer(this.pendingItemsSync);
+            this.pendingItemsSync = null;
+        }
         
         // Создание предметов на карте
         this.spawnItems();
@@ -141,6 +157,12 @@ export default class GameScene extends Phaser.Scene {
         this.cameras.main.update();
         this.isInputLocked = false;
         this.setupExitHandler();
+        this.multiplayerSceneReady = true;
+
+        if (this.pendingGameStart) {
+            this.handleGameStart(this.pendingGameStart);
+            this.pendingGameStart = null;
+        }
     }
 
     async setupMultiplayer() {
@@ -153,20 +175,174 @@ export default class GameScene extends Phaser.Scene {
         }
         
         try {
-            await multiplayerSocket.connect(this.playerId || 1, this.playerName);
+            await multiplayerSocket.connect(this.playerId || 1, this.playerName, this.serverIp || 'localhost');
             console.log('WebSocket подключен');
             
+            this.setupMultiplayerEvents();
+
             if (this.roomId) {
-                multiplayerSocket.roomId = this.roomId;
+                const joinData = await multiplayerSocket.joinGameRoom(this.roomId);
+                console.log('Game room joined:', joinData);
+                this.applyPlayerStateFromServer(joinData.player);
+                this.createOpponentFromServer(joinData.opponent);
+                this.syncItemsFromServer(joinData.items || []);
+
+                if (!joinData.allPlayersConnected) {
+                    this.showWaitingForGameStartUI();
+                }
             } else {
                 multiplayerSocket.findMatch();
                 this.showSearchingUI();
             }
-            
-            this.setupMultiplayerEvents();
         } catch (error) {
             console.error('Ошибка подключения к WebSocket:', error);
             this.showConnectionError();
+        }
+    }
+
+    getSpawnPositionFromServer(playerState) {
+        if (!playerState) {
+            return null;
+        }
+
+        if (playerState.spawnIndex === 0) {
+            return {
+                x: 100,
+                y: this.cameras.main.centerY,
+                rotation: playerState.rotation || 0
+            };
+        }
+
+        if (playerState.spawnIndex === 1) {
+            return {
+                x: this.sys.game.config.width - 150,
+                y: this.cameras.main.centerY,
+                rotation: playerState.rotation || Math.PI
+            };
+        }
+
+        return {
+            x: playerState.x || 100,
+            y: playerState.y || this.cameras.main.centerY,
+            rotation: playerState.rotation || 0
+        };
+    }
+
+    applyPlayerStateFromServer(playerState) {
+        if (!playerState || !this.player) {
+        }
+
+        const position = this.getSpawnPositionFromServer(playerState);
+
+        if (position) {
+            this.player.setPosition(position.x, position.y);
+            this.player.rotation = position.rotation;
+
+            if (this.player.weapon) {
+                this.player.weapon.setPosition(position.x, position.y);
+                this.player.weapon.rotation = position.rotation;
+            }
+        }
+
+        if (typeof playerState.hp === 'number') {
+            this.player.hp = playerState.hp;
+        }
+
+        if (typeof playerState.ammo === 'number') {
+            this.player.ammo = playerState.ammo;
+        }
+
+        if (typeof playerState.reserveAmmo === 'number') {
+            this.player.reserveAmmo = playerState.reserveAmmo;
+        }
+    }
+
+    createOpponentFromServer(opponent) {
+        if (!opponent || this.opponent) {
+            return;
+        }
+
+        const position = this.getSpawnPositionFromServer(opponent) || {
+            x: opponent.x || this.sys.game.config.width - 150,
+            y: opponent.y || this.cameras.main.centerY,
+            rotation: opponent.rotation || 0
+        };
+
+        this.opponent = new OpponentPlayer(
+            this,
+            position.x,
+            position.y,
+            opponent.nickname
+        );
+        this.opponent.rotation = position.rotation;
+        this.opponent.setAimRotation(position.rotation);
+
+        if (typeof opponent.hp === 'number') {
+            this.opponent.hp = opponent.hp;
+        }
+
+        if (typeof opponent.maxHp === 'number') {
+            this.opponent.maxHp = opponent.maxHp;
+        }
+
+        this.hud?.setOpponent(this.opponent, opponent.nickname);
+    }
+
+    syncItemsFromServer(items = []) {
+        if (!this.isMultiplayer || !this.healthPacks || !this.ammoPacks) {
+            this.pendingItemsSync = items;
+            return;
+        }
+
+        const incomingIds = new Set(items.map((item) => item.id));
+
+        for (const [itemId, itemObject] of this.serverItems.entries()) {
+            if (!incomingIds.has(itemId)) {
+                itemObject.destroy();
+                this.serverItems.delete(itemId);
+                this.pendingItemCollections.delete(itemId);
+            }
+        }
+
+        for (const item of items) {
+            if (this.serverItems.has(item.id)) {
+                const itemObject = this.serverItems.get(item.id);
+
+                if (itemObject && !itemObject.visible) {
+                    itemObject.enableBody(false, item.x, item.y, true, true);
+                    itemObject.setPosition(item.x, item.y);
+                }
+
+                this.pendingItemCollections.delete(item.id);
+                continue;
+            }
+
+            const group = item.type === 'health' ? this.healthPacks : this.ammoPacks;
+            const itemObject = item.type === 'health'
+                ? new HealthPack(this, item.x, item.y, group, { autoDestroy: false })
+                : new AmmoPack(this, item.x, item.y, group, { autoDestroy: false });
+
+            itemObject.serverId = item.id;
+            itemObject.serverType = item.type;
+            this.serverItems.set(item.id, itemObject);
+        }
+    }
+
+    applyCollectedItem(data) {
+        if (data?.collectorId !== multiplayerSocket.userId || !data.player) {
+            return;
+        }
+
+        if (typeof data.player.hp === 'number') {
+            this.player.hp = data.player.hp;
+        }
+
+        if (typeof data.player.ammo === 'number') {
+            this.player.ammo = data.player.ammo;
+        }
+
+        if (typeof data.player.reserveAmmo === 'number') {
+            this.player.reserveAmmo = data.player.reserveAmmo;
         }
     }
 
@@ -202,6 +378,51 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    showWaitingForGameStartUI() {
+        if (this.waitingForStartText) {
+            return;
+        }
+
+        this.waitingForStartText = this.add.text(
+            this.cameras.main.centerX,
+            this.cameras.main.centerY,
+            'Ожидание соперника...',
+            {
+                fontSize: '28px',
+                fill: '#ffffff',
+                align: 'center',
+                backgroundColor: '#000000aa',
+                padding: { x: 20, y: 15 }
+            }
+        ).setOrigin(0.5).setDepth(1000);
+    }
+
+    hideWaitingForGameStartUI() {
+        if (this.waitingForStartText) {
+            this.waitingForStartText.destroy();
+            this.waitingForStartText = null;
+        }
+    }
+
+    handleGameStart(data) {
+        const players = data?.players || [];
+        const playerState = players.find((player) => player.userId === multiplayerSocket.userId);
+        const opponentState = players.find((player) => player.userId !== multiplayerSocket.userId);
+
+        this.applyPlayerStateFromServer(playerState);
+        this.createOpponentFromServer(opponentState);
+        this.syncItemsFromServer(data?.items || []);
+
+        if (this.opponent && opponentState) {
+            this.opponent.updateFromServer(opponentState);
+        }
+
+        this.multiplayerStarted = true;
+        this.hideSearchingUI();
+        this.hideWaitingForGameStartUI();
+        this.showMessage('Бой начался', 1200);
+    }
+
     setupMultiplayerEvents() {
         // Ожидание игрока
         multiplayerSocket.onWaitingForPlayer((data) => {
@@ -212,27 +433,66 @@ export default class GameScene extends Phaser.Scene {
         });
 
         // Матч найден
-        multiplayerSocket.onMatchFound((data) => {
+        multiplayerSocket.onMatchFound(async (data) => {
             console.log('Соперник найден!', data);
             this.hideSearchingUI();
             this.roomId = data.roomId;
+            this.applyPlayerStateFromServer(data.player);
+            this.showWaitingForGameStartUI();
             
             // Создаем оппонента
-            this.opponent = new OpponentPlayer(
-                this,
-                data.opponent.x || this.sys.game.config.width - 150,
-                data.opponent.y || this.cameras.main.centerY,
-                data.opponent.nickname
-            );
+            this.createOpponentFromServer(data.opponent);
+
+            try {
+                const joinData = await multiplayerSocket.joinGameRoom(data.roomId);
+                this.applyPlayerStateFromServer(joinData.player);
+                this.createOpponentFromServer(joinData.opponent);
+            } catch (error) {
+                console.error('Failed to join game room after match:', error);
+                this.showConnectionError();
+            }
         });
 
         // Отмена поиска
+        multiplayerSocket.onOpponentJoinedGameRoom((data) => {
+            console.log('Opponent joined game room:', data);
+
+            if (!this.multiplayerStarted) {
+                this.showWaitingForGameStartUI();
+            }
+        });
+
+        multiplayerSocket.onGameStart((data) => {
+            console.log('Game started:', data);
+
+            if (!this.multiplayerSceneReady) {
+                this.pendingGameStart = data;
+                return;
+            }
+
+            this.handleGameStart(data);
+        });
+
+        multiplayerSocket.onGameNotStarted(() => {
+            if (!this.multiplayerStarted) {
+                this.showWaitingForGameStartUI();
+            }
+        });
+
         multiplayerSocket.onSearchCancelled(() => {
             this.hideSearchingUI();
             this.showMessage('Поиск отменён', 2000);
         });
 
         // Обновление позиции оппонента
+        multiplayerSocket.onMatchmakingRejected((data) => {
+            this.hideSearchingUI();
+            this.showMessage(
+                data?.message || 'Поиск уже запущен в другой вкладке',
+                3000
+            );
+        });
+
         multiplayerSocket.onOpponentUpdate((data) => {
             if (this.opponent) {
                 this.opponent.updateFromServer(data);
@@ -240,6 +500,45 @@ export default class GameScene extends Phaser.Scene {
         });
 
         // Выстрел оппонента
+        multiplayerSocket.onPlayerShootConfirmed((data) => {
+            if (!this.player || !data?.bullet) return;
+
+            this.player.createConfirmedShot(
+                data.bullet,
+                this.playerBullets,
+                data.ammo,
+                data.reserveAmmo
+            );
+        });
+
+        multiplayerSocket.onPlayerShootRejected((data) => {
+            if (typeof data?.ammo === 'number') {
+                this.player.ammo = data.ammo;
+            }
+
+            if (typeof data?.reserveAmmo === 'number') {
+                this.player.reserveAmmo = data.reserveAmmo;
+            }
+        });
+
+        multiplayerSocket.onPlayerReloadConfirmed((data) => {
+            if (typeof data?.ammo === 'number') {
+                this.player.ammo = data.ammo;
+            }
+
+            if (typeof data?.reserveAmmo === 'number') {
+                this.player.reserveAmmo = data.reserveAmmo;
+            }
+        });
+
+        multiplayerSocket.onItemsSync((data) => {
+            this.syncItemsFromServer(data?.items || []);
+        });
+
+        multiplayerSocket.onItemCollected((data) => {
+            this.applyCollectedItem(data);
+        });
+
         multiplayerSocket.onOpponentShot((bulletData) => {
             this.createOpponentBullet(bulletData);
         });
@@ -247,12 +546,26 @@ export default class GameScene extends Phaser.Scene {
         // Попадание в оппонента
         multiplayerSocket.onOpponentHit((data) => {
             if (this.opponent && data.hitX && data.hitY) {
-                this.opponent.takeDamage(data.damage);
+                if (typeof data.hp === 'number') {
+                    this.opponent.setServerHp(data.hp);
+                } else {
+                    this.opponent.takeDamage(data.damage);
+                }
                 this.effects.hitEffect(data.hitX, data.hitY, true);
             }
         });
 
         // Оппонент вышел
+        multiplayerSocket.onPlayerHitConfirmed((data) => {
+            if (typeof data?.hp === 'number') {
+                this.player.setServerHp(data.hp);
+            }
+
+            if (data?.hitX && data?.hitY) {
+                this.effects.hitEffect(data.hitX, data.hitY, false);
+            }
+        });
+
         multiplayerSocket.onOpponentLeft(() => {
             this.showMessage('Соперник покинул игру', 3000);
             this.gameDefeat();
@@ -289,13 +602,10 @@ export default class GameScene extends Phaser.Scene {
         // Проверка попадания в игрока
         this.physics.add.overlap(bullet, this.player, (b, p) => {
             b.destroy();
-            p.takeDamage(10);
             
             // Отправляем на сервер информацию о попадании
             multiplayerSocket.socket?.emit('playerHit', {
                 roomId: this.roomId,
-                damage: 10,
-                newHp: p.hp,
                 hitX: p.x,
                 hitY: p.y
             });
@@ -303,6 +613,28 @@ export default class GameScene extends Phaser.Scene {
         
         this.time.delayedCall(2000, () => {
             if (bullet.active) bullet.destroy();
+        });
+    }
+
+    requestPlayerShot(pointer) {
+        if (!this.player || this.player.ammo <= 0 || this.player.isReloading) return;
+
+        const angle = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.x, pointer.y);
+        const offsetX = Math.cos(angle) * 5;
+        const offsetY = Math.sin(angle) * 5;
+        const spawnX = this.player.x + offsetX;
+        const spawnY = this.player.y + offsetY;
+
+        const collides = this.physics.overlapRect(spawnX, spawnY, 1, 1)
+            .some(hit => hit.gameObject === this.wallSegments);
+
+        if (collides) return;
+
+        multiplayerSocket.shoot({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            x: spawnX,
+            y: spawnY,
+            angle
         });
     }
 
@@ -500,8 +832,6 @@ export default class GameScene extends Phaser.Scene {
         this.physics.add.collider(this.playerBullets, this.wallSegments, (bullet) => bullet.destroy());
         this.physics.add.collider(this.enemyBullets, this.wallSegments, (bullet) => bullet.destroy());
         
-        this.physics.add.overlap(this.playerBullets, this.enemy, this.onBulletHitEnemy, null, this);
-        
         this.physics.add.overlap(this.player, this.healthPacks, this.onCollectHealth, null, this);
 
         this.physics.add.overlap(this.player, this.ammoPacks, this.onCollectAmmo, null, this);
@@ -535,10 +865,18 @@ export default class GameScene extends Phaser.Scene {
         this.input.mouse.disableContextMenu();
         
         // Перезарядка
-        this.input.keyboard.on('keydown-R', () => this.player.reload());
+        this.input.keyboard.on('keydown-R', () => {
+            this.player.reload(() => {
+                if (this.isMultiplayer && multiplayerSocket.connected && multiplayerSocket.roomId) {
+                    multiplayerSocket.reload();
+                }
+            });
+        });
     }
 
     spawnItems() {
+        if (this.isMultiplayer) return;
+
         // Проверяем, сколько предметов уже на карте
         const currentItems = this.healthPacks.getChildren().length + this.ammoPacks.getChildren().length;
         
@@ -585,6 +923,11 @@ export default class GameScene extends Phaser.Scene {
     onCollectHealth(player, healthPack) {
         this.effects.pickupEffect(healthPack.x, healthPack.y, 'health');
 
+        if (this.isMultiplayer) {
+            this.collectServerItem(healthPack);
+            return;
+        }
+
         healthPack.destroy();
         this.player.heal(20);
     }
@@ -592,8 +935,23 @@ export default class GameScene extends Phaser.Scene {
     onCollectAmmo(player, ammoPack) {
         this.effects.pickupEffect(ammoPack.x, ammoPack.y, 'ammo');
 
+        if (this.isMultiplayer) {
+            this.collectServerItem(ammoPack);
+            return;
+        }
+
         ammoPack.destroy();
         this.player.addAmmo(10);
+    }
+
+    collectServerItem(itemObject) {
+        if (!itemObject?.serverId || this.pendingItemCollections.has(itemObject.serverId)) {
+            return;
+        }
+
+        this.pendingItemCollections.add(itemObject.serverId);
+        itemObject.disableBody(true, true);
+        multiplayerSocket.collectItem(itemObject.serverId);
     }
 
     wallSegmentsColloder(player, wallSegment) {
@@ -610,10 +968,6 @@ export default class GameScene extends Phaser.Scene {
         this.physics.pause();
         
         if (this.isMultiplayer && multiplayerSocket.socket) {
-            multiplayerSocket.socket.emit('playerDeath', {
-                roomId: this.roomId,
-                winnerId: multiplayerSocket.userId
-            });
             multiplayerSocket.disconnect();
         }
         
@@ -689,6 +1043,15 @@ export default class GameScene extends Phaser.Scene {
         if (!this.cursors || !this.wasd || !this.dashKeyShift) {
             return;
         }
+
+        if (this.isMultiplayer && !this.multiplayerStarted) {
+            if (this.player.body) {
+                this.player.body.setVelocity(0, 0);
+            }
+
+            this.hud?.update();
+            return;
+        }
         
         // Обработка коллизии между игроком и врагом (отталкивание)
         if (!this.isMultiplayer && this.player && this.enemy && this.enemy.active) {
@@ -728,7 +1091,11 @@ export default class GameScene extends Phaser.Scene {
             const now = Date.now();
             if (now - this.lastShotTime >= this.shotDelay) {
                 this.lastShotTime = now;
-                this.player.shoot(this.input.activePointer, this.playerBullets);
+                if (this.isMultiplayer) {
+                    this.requestPlayerShot(this.input.activePointer);
+                } else {
+                    this.player.shoot(this.input.activePointer, this.playerBullets);
+                }
             }
         }
         
@@ -747,15 +1114,13 @@ export default class GameScene extends Phaser.Scene {
                 multiplayerSocket.updatePlayerPosition({
                     x: this.player.x,
                     y: this.player.y,
-                    rotation: this.player.rotation,
-                    hp: this.player.hp,
-                    ammo: this.player.ammo
+                    rotation: this.player.rotation
                 });
             }
         }
         
         // Проверка смерти игрока
-        if (this.player.hp <= 0) {
+        if (!this.isMultiplayer && this.player.hp <= 0) {
             this.gameDefeat();
         }
     }

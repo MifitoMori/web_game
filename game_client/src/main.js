@@ -1,5 +1,5 @@
 // main.js
-import GameScene from './scenes/GameScene.js';
+import GameScene from './scenes/GameScene.js?v=20260530-hud-ammo';
 
 // Функция ожидания готовности контейнера
 function waitForContainer() {

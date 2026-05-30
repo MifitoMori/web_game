@@ -7,15 +7,50 @@ class MultiplayerSocket {
       this.nickname = null;
     }
   
-    connect(userId, nickname) {
+    connect(userId, nickname, serverIp = 'localhost') {
       return new Promise((resolve, reject) => {
         // Проверяем, что io доступен глобально (из CDN)
         if (typeof io === 'undefined') {
           reject(new Error('Socket.IO not loaded. Check CDN connection.'));
           return;
         }
+
+        let settled = false;
+
+        const cleanup = () => {
+          this.socket?.off('authSuccess', handleAuthSuccess);
+          this.socket?.off('authError', handleAuthError);
+          this.socket?.off('connect_error', handleConnectError);
+        };
+
+        const handleAuthSuccess = (data) => {
+          if (settled) return;
+
+          settled = true;
+          this.connected = true;
+          this.userId = data?.userId ?? userId;
+          this.nickname = data?.nickname ?? nickname;
+          cleanup();
+          resolve();
+        };
+
+        const handleAuthError = (error) => {
+          if (settled) return;
+
+          settled = true;
+          cleanup();
+          reject(new Error(error?.message || 'WebSocket auth failed'));
+        };
+
+        const handleConnectError = (error) => {
+          if (settled) return;
+
+          settled = true;
+          cleanup();
+          reject(error);
+        };
         
-        this.socket = io('http://localhost:3001/game', {
+        this.socket = io(`http://${serverIp}:3001/game`, {
           transports: ['websocket'],
           reconnection: false,
           withCredentials: true,
@@ -23,25 +58,20 @@ class MultiplayerSocket {
   
         this.socket.on('connect', () => {
           console.log('WebSocket connected:', this.socket.id);
-          this.connected = true;
-          this.userId = userId;
-          this.nickname = nickname;
-          resolve();
         });
 
         this.socket.on('authSuccess', (data) => {
-          this.userId = data.userId;
-          this.nickname = data.nickname;
+          handleAuthSuccess(data);
         });
 
         this.socket.on('authError', (error) => {
           console.error('WebSocket auth error:', error);
-          reject(new Error(error?.message || 'WebSocket auth failed'));
+          handleAuthError(error);
         });
   
         this.socket.on('connect_error', (error) => {
           console.error('WebSocket connection error:', error);
-          reject(error);
+          handleConnectError(error);
         });
       });
     }
@@ -49,6 +79,35 @@ class MultiplayerSocket {
     findMatch() {
       if (!this.socket) return;
       this.socket.emit('findMatch', {});
+    }
+
+    joinGameRoom(roomId) {
+      return new Promise((resolve, reject) => {
+        if (!this.socket) {
+          reject(new Error('WebSocket is not connected'));
+          return;
+        }
+
+        const handleJoined = (data) => {
+          this.roomId = data.roomId;
+          cleanup();
+          resolve(data);
+        };
+
+        const handleError = (error) => {
+          cleanup();
+          reject(new Error(error?.message || 'Failed to join game room'));
+        };
+
+        const cleanup = () => {
+          this.socket.off('gameRoomJoined', handleJoined);
+          this.socket.off('gameRoomJoinError', handleError);
+        };
+
+        this.socket.on('gameRoomJoined', handleJoined);
+        this.socket.on('gameRoomJoinError', handleError);
+        this.socket.emit('joinGameRoom', { roomId });
+      });
     }
   
     cancelSearch() {
@@ -70,6 +129,10 @@ class MultiplayerSocket {
     onSearchCancelled(callback) {
       this.socket?.on('searchCancelled', callback);
     }
+
+    onMatchmakingRejected(callback) {
+      this.socket?.on('matchmakingRejected', callback);
+    }
   
     updatePlayerPosition(data) {
       if (!this.socket || !this.roomId) return;
@@ -86,9 +149,44 @@ class MultiplayerSocket {
         bullet: bulletData,
       });
     }
+
+    reload() {
+      if (!this.socket || !this.roomId) return;
+      this.socket.emit('playerReload', {
+        roomId: this.roomId,
+      });
+    }
+
+    collectItem(itemId) {
+      if (!this.socket || !this.roomId) return;
+      this.socket.emit('collectItem', {
+        roomId: this.roomId,
+        itemId,
+      });
+    }
   
     onOpponentUpdate(callback) {
       this.socket?.on('opponentUpdate', callback);
+    }
+
+    onPlayerShootConfirmed(callback) {
+      this.socket?.on('playerShootConfirmed', callback);
+    }
+
+    onPlayerShootRejected(callback) {
+      this.socket?.on('playerShootRejected', callback);
+    }
+
+    onPlayerReloadConfirmed(callback) {
+      this.socket?.on('playerReloadConfirmed', callback);
+    }
+
+    onItemsSync(callback) {
+      this.socket?.on('itemsSync', callback);
+    }
+
+    onItemCollected(callback) {
+      this.socket?.on('itemCollected', callback);
     }
   
     onOpponentShot(callback) {
@@ -98,9 +196,29 @@ class MultiplayerSocket {
     onOpponentHit(callback) {
       this.socket?.on('opponentHit', callback);
     }
+
+    onPlayerHitConfirmed(callback) {
+      this.socket?.on('playerHitConfirmed', callback);
+    }
+
+    onPlayerHitRejected(callback) {
+      this.socket?.on('playerHitRejected', callback);
+    }
   
     onOpponentLeft(callback) {
       this.socket?.on('opponentLeft', callback);
+    }
+
+    onOpponentJoinedGameRoom(callback) {
+      this.socket?.on('opponentJoinedGameRoom', callback);
+    }
+
+    onGameStart(callback) {
+      this.socket?.on('gameStart', callback);
+    }
+
+    onGameNotStarted(callback) {
+      this.socket?.on('gameNotStarted', callback);
     }
   
     onGameEnd(callback) {
