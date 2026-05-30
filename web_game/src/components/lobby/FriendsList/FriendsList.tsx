@@ -651,10 +651,6 @@ const FriendsList: React.FC<FriendsListProps> = ({
                 <Text size="sm">Поражения: {publicProfile.profile.losses}</Text>
               </Group>
               <Group>
-                <IconClock size={18} />
-                <Text size="sm">Ничьи: {publicProfile.profile.draws}</Text>
-              </Group>
-              <Group>
                 <IconPlayerPlay size={18} />
                 <Text size="sm">Всего игр: {publicProfile.profile.totalGames}</Text>
               </Group>

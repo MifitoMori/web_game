@@ -1,11 +1,12 @@
-import Player from '../entities/Player.js?v=20260530-hud-ammo';
-import Enemy from '../entities/Enemy.js?v=20260530-hud-ammo';
-import OpponentPlayer from '../entities/OpponentPlayer.js?v=20260530-hud-ammo';
-import HUD from '../ui/HUD.js?v=20260530-hud-ammo';
-import AmmoPack from '../items/AmmoPack.js?v=20260530-hud-ammo';
-import HealthPack from '../items/HealthPack.js?v=20260530-hud-ammo';
-import Effects from '../utils/Effects.js?v=20260530-hud-ammo'; 
-import { multiplayerSocket } from '../network/socket-client.js?v=20260530-hud-ammo';
+import { PLAYER_SPAWNS, WORLD_CENTER_X, WORLD_CENTER_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../config/world.js?v=20260530-fixed-world';
+import Player from '../entities/Player.js?v=20260530-fixed-world';
+import Enemy from '../entities/Enemy.js?v=20260530-fixed-world';
+import OpponentPlayer from '../entities/OpponentPlayer.js?v=20260530-fixed-world';
+import HUD from '../ui/HUD.js?v=20260530-fixed-world';
+import AmmoPack from '../items/AmmoPack.js?v=20260530-fixed-world';
+import HealthPack from '../items/HealthPack.js?v=20260530-fixed-world';
+import Effects from '../utils/Effects.js?v=20260530-fixed-world'; 
+import { multiplayerSocket } from '../network/socket-client.js?v=20260530-fixed-world';
 
 export default class GameScene extends Phaser.Scene {
     constructor() {
@@ -96,14 +97,14 @@ export default class GameScene extends Phaser.Scene {
         this.setupWalls();
         
         // Создание игрока
-        this.player = new Player(this, 100, this.cameras.main.centerY);
+        this.player = new Player(this, PLAYER_SPAWNS[0].x, PLAYER_SPAWNS[0].y);
           
         if (this.isMultiplayer) {
             // Мультиплеерный режим
             await this.setupMultiplayer();
         } else {
             // Соло режим - создаем врага
-            this.enemy = new Enemy(this, this.sys.game.config.width - 100, this.cameras.main.centerY);
+            this.enemy = new Enemy(this, WORLD_WIDTH - 100, WORLD_CENTER_Y);
             this.player.body.setImmovable(false);
             this.enemy.body.setImmovable(false);
         }
@@ -205,31 +206,21 @@ export default class GameScene extends Phaser.Scene {
             return null;
         }
 
-        if (playerState.spawnIndex === 0) {
-            return {
-                x: 100,
-                y: this.cameras.main.centerY,
-                rotation: playerState.rotation || 0
-            };
-        }
-
-        if (playerState.spawnIndex === 1) {
-            return {
-                x: this.sys.game.config.width - 150,
-                y: this.cameras.main.centerY,
-                rotation: playerState.rotation || Math.PI
-            };
-        }
+        const fallbackSpawn =
+            PLAYER_SPAWNS[playerState.spawnIndex] || PLAYER_SPAWNS[0];
 
         return {
-            x: playerState.x || 100,
-            y: playerState.y || this.cameras.main.centerY,
-            rotation: playerState.rotation || 0
+            x: Number.isFinite(playerState.x) ? playerState.x : fallbackSpawn.x,
+            y: Number.isFinite(playerState.y) ? playerState.y : fallbackSpawn.y,
+            rotation: Number.isFinite(playerState.rotation)
+                ? playerState.rotation
+                : fallbackSpawn.rotation
         };
     }
 
     applyPlayerStateFromServer(playerState) {
         if (!playerState || !this.player) {
+            return;
         }
 
         const position = this.getSpawnPositionFromServer(playerState);
@@ -263,9 +254,11 @@ export default class GameScene extends Phaser.Scene {
         }
 
         const position = this.getSpawnPositionFromServer(opponent) || {
-            x: opponent.x || this.sys.game.config.width - 150,
-            y: opponent.y || this.cameras.main.centerY,
-            rotation: opponent.rotation || 0
+            x: Number.isFinite(opponent.x) ? opponent.x : PLAYER_SPAWNS[1].x,
+            y: Number.isFinite(opponent.y) ? opponent.y : PLAYER_SPAWNS[1].y,
+            rotation: Number.isFinite(opponent.rotation)
+                ? opponent.rotation
+                : PLAYER_SPAWNS[1].rotation
         };
 
         this.opponent = new OpponentPlayer(
@@ -681,30 +674,30 @@ export default class GameScene extends Phaser.Scene {
         
         const borderSize = 20;
         this.physics.world.setBounds(borderSize, borderSize, 
-            this.sys.game.config.width - borderSize * 2, 
-            this.sys.game.config.height - borderSize * 2);
+            WORLD_WIDTH - borderSize * 2, 
+            WORLD_HEIGHT - borderSize * 2);
         
         // Создание видимых стен
         const walls = this.physics.add.staticGroup();
         
-        const topWall = this.add.rectangle(0, 0, this.sys.game.config.width, borderSize, 0x000000);
+        const topWall = this.add.rectangle(0, 0, WORLD_WIDTH, borderSize, 0x000000);
         topWall.setOrigin(0, 0);
         this.physics.add.existing(topWall, true);
         walls.add(topWall);
         
-        const bottomWall = this.add.rectangle(0, this.sys.game.config.height - borderSize + 4, 
-            this.sys.game.config.width, borderSize, 0x000000);
+        const bottomWall = this.add.rectangle(0, WORLD_HEIGHT - borderSize + 4, 
+            WORLD_WIDTH, borderSize, 0x000000);
         bottomWall.setOrigin(0, 0);
         this.physics.add.existing(bottomWall, true);
         walls.add(bottomWall);
         
-        const leftWall = this.add.rectangle(0, 0, borderSize, this.sys.game.config.height, 0x000000);
+        const leftWall = this.add.rectangle(0, 0, borderSize, WORLD_HEIGHT, 0x000000);
         leftWall.setOrigin(0, 0);
         this.physics.add.existing(leftWall, true);
         walls.add(leftWall);
         
-        const rightWall = this.add.rectangle(this.sys.game.config.width - borderSize, 0, 
-            borderSize, this.sys.game.config.height, 0x000000);
+        const rightWall = this.add.rectangle(WORLD_WIDTH - borderSize, 0, 
+            borderSize, WORLD_HEIGHT, 0x000000);
         rightWall.setOrigin(0, 0);
         this.physics.add.existing(rightWall, true);
         walls.add(rightWall);
@@ -714,8 +707,8 @@ export default class GameScene extends Phaser.Scene {
 
     createTileBackground() {
         const tileSize = 64;
-        const width = this.sys.game.config.width;
-        const height = this.sys.game.config.height;
+        const width = WORLD_WIDTH;
+        const height = WORLD_HEIGHT;
         
         const cols = Math.ceil(width / tileSize);
         const rows = Math.ceil(height / tileSize);
@@ -734,7 +727,7 @@ export default class GameScene extends Phaser.Scene {
                 
                 const isBorder = row < 2 || row > rows - 3 || col < 2 || col > cols - 3;
                 
-                const isSandPatch = !isBorder && Math.random() < 0.1;
+                const isSandPatch = !isBorder && ((row * 31 + col * 17) % 13 === 0);
                 
                 if (isBorder || isSandPatch) {
                     
@@ -762,14 +755,13 @@ export default class GameScene extends Phaser.Scene {
     setupWalls() {
         this.wallSegments = this.physics.add.staticGroup();
         
-        const width = this.sys.game.config.width;
-        const height = this.sys.game.config.height;
+        const width = WORLD_WIDTH;
         
         const wallTileSize = 64;
         
         // Центр арены
-        const centerX = this.cameras.main.centerX;
-        const centerY = this.cameras.main.centerY;
+        const centerX = WORLD_CENTER_X;
+        const centerY = WORLD_CENTER_Y;
         
         const startingWall = (startX, startY, count) => {
             const x = startX;
@@ -889,8 +881,8 @@ export default class GameScene extends Phaser.Scene {
             // Случайно выбираем тип предмета
             const isHealth = Phaser.Math.Between(0, 1) === 0;
             
-            const x = Phaser.Math.Between(100, this.sys.game.config.width - 100);
-            const y = Phaser.Math.Between(100, this.sys.game.config.height - 100);
+            const x = Phaser.Math.Between(100, WORLD_WIDTH - 100);
+            const y = Phaser.Math.Between(100, WORLD_HEIGHT - 100);
 
             const collides = this.physics.overlapRect(x, y, 1, 1)
                 .some(hit => hit.gameObject === this.wallSegments);

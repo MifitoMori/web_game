@@ -25,7 +25,6 @@ export interface FriendRequest {
 export interface PlayerStats {
   wins: number;
   losses: number;
-  draws: number;
   totalGames: number;
   experience: number;
   nextLevelExp: number;
@@ -44,8 +43,6 @@ export interface PublicFriendProfile {
     totalGames: number;
     wins: number;
     losses: number;
-    draws: number;
-    maxStreak: number;
     rating: number;
     level: number;
   };

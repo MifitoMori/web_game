@@ -18,9 +18,7 @@ export interface GameStats {
   totalGames: number;
   wins: number;
   losses: number;
-  draws: number;
   winRate: number;
-  longestWinStreak: number;
   totalScore: number;
   averageScore: number;
 }

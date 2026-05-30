@@ -69,8 +69,6 @@ export class AuthService {
       totalGames: number;
       wins: number;
       losses: number;
-      draws: number;
-      maxStreak: number;
       rating: number;
       credits: number;
       gems: number;

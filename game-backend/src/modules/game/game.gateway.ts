@@ -89,9 +89,9 @@ type CollectItemPayload = {
 
 const GAME_WORLD_LIMITS = {
   minX: 20,
-  maxX: 4096,
+  maxX: 1280,
   minY: 20,
-  maxY: 4096,
+  maxY: 720,
   maxRotationAbs: Math.PI * 4,
 };
 

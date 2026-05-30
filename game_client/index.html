@@ -7,11 +7,22 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script src="https://cdn.socket.io/4.8.3/socket.io.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #1f181e;
+        }
+
+        canvas {
+            display: block;
+            background: #1f181e;
+        }
     </style>
 </head>
 <body>
-    <script type="module" src="src/main.js?v=20260530-hud-ammo"></script>
+    <script type="module" src="src/main.js?v=20260530-fixed-world"></script>
 </body>
 </html>

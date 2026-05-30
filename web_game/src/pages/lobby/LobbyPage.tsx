@@ -255,7 +255,6 @@ const LobbyPage: React.FC = () => {
     ? {
         wins: profileData.stats.wins,
         losses: profileData.stats.losses,
-        draws: profileData.stats.draws,
         totalGames: profileData.stats.totalGames,
         experience: profileData.profile.experience,
         nextLevelExp: profileData.profile.nextLevelExp,

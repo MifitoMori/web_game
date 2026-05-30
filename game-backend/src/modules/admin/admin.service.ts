@@ -31,8 +31,6 @@ export class AdminService {
         totalGames: true,
         wins: true,
         losses: true,
-        draws: true,
-        maxStreak: true,
         rating: true,
         credits: true,
         gems: true,

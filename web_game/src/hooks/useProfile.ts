@@ -8,8 +8,6 @@ type BackendProfile = {
   totalGames: number;
   wins: number;
   losses: number;
-  draws: number;
-  maxStreak: number;
   rating: number;
   credits: number;
   gems: number;
@@ -93,9 +91,7 @@ const buildStats = (profile: BackendProfile): GameStats => {
     totalGames: profile.totalGames,
     wins: profile.wins,
     losses: profile.losses,
-    draws: profile.draws,
     winRate: Number(winRate.toFixed(1)),
-    longestWinStreak: profile.maxStreak,
     totalScore: profile.rating,
     averageScore:
       profile.totalGames > 0 ? Number((profile.rating / profile.totalGames).toFixed(1)) : 0,

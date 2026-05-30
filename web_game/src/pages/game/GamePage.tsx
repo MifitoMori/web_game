@@ -28,7 +28,7 @@ class NetworkService {
 }
 
 const GamePage: React.FC = () => {
-  const gameClientVersion = '20260530-hud-ammo';
+  const gameClientVersion = '20260530-fixed-world';
   const navigate = useNavigate();
   const location = useLocation();
   const [showExitModal, setShowExitModal] = useState(false);
@@ -164,7 +164,7 @@ const GamePage: React.FC = () => {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden', background: '#1f181e' }}>
       {isLoading && (
         <Center style={{ 
           position: 'absolute', 
@@ -188,6 +188,7 @@ const GamePage: React.FC = () => {
           border: 'none',
           display: isLoading ? 'none' : 'block',
           pointerEvents: 'auto',
+          background: '#1f181e',
         }}
         title="Game"
         allow="fullscreen"

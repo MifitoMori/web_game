@@ -1,5 +1,6 @@
 // main.js
-import GameScene from './scenes/GameScene.js?v=20260530-hud-ammo';
+import { WORLD_HEIGHT, WORLD_WIDTH } from './config/world.js?v=20260530-fixed-world';
+import GameScene from './scenes/GameScene.js?v=20260530-fixed-world';
 
 // Функция ожидания готовности контейнера
 function waitForContainer() {
@@ -20,13 +21,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     
     const config = {
         type: Phaser.AUTO,
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: WORLD_WIDTH,
+        height: WORLD_HEIGHT,
         scale: {
-            mode: Phaser.Scale.RESIZE,
+            mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
-            width: window.innerWidth,
-            height: window.innerHeight,
+            width: WORLD_WIDTH,
+            height: WORLD_HEIGHT,
         },
         physics: {
             default: 'arcade',
@@ -38,10 +39,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         scene: [GameScene]
     };
     
-    const game = new Phaser.Game(config);
+    new Phaser.Game(config);
     
     // При изменении размера окна обновляем игру
-    window.addEventListener('resize', () => {
-        game.scale.resize(window.innerWidth, window.innerHeight);
-    });
 });
