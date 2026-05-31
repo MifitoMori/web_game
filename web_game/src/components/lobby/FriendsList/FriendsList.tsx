@@ -75,21 +75,42 @@ const PlayerRow: React.FC<PlayerRowProps> = ({
     p="xs"
     onClick={canOpenProfile ? onOpenProfile : undefined}
   >
-    <Group justify="space-between" wrap="nowrap">
+    <Group justify="space-between" align="center" wrap="nowrap">
       <Group wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
         <Avatar src={player.avatar} size={40} radius="xl" />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Group justify="space-between" wrap="nowrap">
-            <Text size="sm" fw={500} lineClamp={1}>
-              {player.nickname}
-            </Text>
-            <Badge size="xs" variant="light">
-              LVL {player.level}
-            </Badge>
+        <div className={classes.friendIdentity}>
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Stack gap={3} style={{ flex: 1, minWidth: 0 }}>
+              <Text size="sm" fw={500} lineClamp={1}>
+                {player.nickname}
+              </Text>
+              {player.title && (
+                <Badge
+                  className={classes.friendTitle}
+                  size="xs"
+                  variant="light"
+                  color="grape"
+                >
+                  {player.title}
+                </Badge>
+              )}
+            </Stack>
+            <Group className={classes.friendMetaGroup} gap="xs" align="center" wrap="nowrap">
+              <Badge className={classes.friendMetaBadge} variant="light">
+                LVL {player.level}
+              </Badge>
+              {rightSection && (
+                <div
+                  className={classes.friendMetaAction}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {rightSection}
+                </div>
+              )}
+            </Group>
           </Group>
         </div>
       </Group>
-      {rightSection && <div onClick={(event) => event.stopPropagation()}>{rightSection}</div>}
     </Group>
   </Paper>
 );
@@ -307,7 +328,11 @@ const FriendsList: React.FC<FriendsListProps> = ({
 
   const renderSearchAction = (player: FriendSearchResult) => {
     if (player.relationshipStatus === 'FRIEND') {
-      return <Badge variant="light">В друзьях</Badge>;
+      return (
+        <Badge className={classes.friendMetaBadge} variant="light">
+          В друзьях
+        </Badge>
+      );
     }
 
     if (player.relationshipStatus === 'OUTGOING' && player.requestId) {
@@ -386,11 +411,23 @@ const FriendsList: React.FC<FriendsListProps> = ({
                     <Group wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
                       <Avatar src={friend.avatar} size={40} radius="xl" />
 
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className={classes.friendIdentity}>
                         <Group justify="space-between" wrap="nowrap">
-                          <Text size="sm" fw={500} lineClamp={1}>
-                            {friend.nickname}
-                          </Text>
+                          <Stack gap={3} style={{ flex: 1, minWidth: 0 }}>
+                            <Text size="sm" fw={500} lineClamp={1}>
+                              {friend.nickname}
+                            </Text>
+                            {friend.title && (
+                              <Badge
+                                className={classes.friendTitle}
+                                size="xs"
+                                variant="light"
+                                color="grape"
+                              >
+                                {friend.title}
+                              </Badge>
+                            )}
+                          </Stack>
                           <Badge size="xs" variant="light">
                             LVL {friend.level}
                           </Badge>
@@ -618,7 +655,14 @@ const FriendsList: React.FC<FriendsListProps> = ({
                 {publicProfile.user.login[0]?.toUpperCase()}
               </Avatar>
               <div style={{ minWidth: 0 }}>
-                <Title order={3}>{publicProfile.user.login}</Title>
+                <Group gap="xs" wrap="nowrap">
+                  <Title order={3}>{publicProfile.user.login}</Title>
+                  {publicProfile.profile.title && (
+                    <Badge size="sm" variant="light" color="grape">
+                      {publicProfile.profile.title}
+                    </Badge>
+                  )}
+                </Group>
                 <Text c="dimmed" size="sm">
                   {publicProfile.user.firstName} {publicProfile.user.secondName}
                 </Text>

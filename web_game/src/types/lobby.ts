@@ -1,6 +1,7 @@
 export interface Player {
   id: string;
   nickname: string;
+  title?: string;
   level: number;
   avatar?: string;
 }
@@ -44,5 +45,6 @@ export interface PublicFriendProfile {
     wins: number;
     losses: number;
     level: number;
+    title?: string;
   };
 }

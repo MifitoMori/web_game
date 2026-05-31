@@ -41,9 +41,16 @@ const PlayerStatus: React.FC<PlayerStatusProps> = ({ player, stats }) => {
           <Stack gap="xs" style={{ flex: 1 }}>
             <Group justify="space-between">
               
-                <Text size="xl" fw={700}>
-                  {player.nickname}
-                </Text>
+                <Group gap="xs">
+                  <Text size="xl" fw={700}>
+                    {player.nickname}
+                  </Text>
+                  {player.title && (
+                    <Badge variant="light" color="grape" size="sm">
+                      {player.title}
+                    </Badge>
+                  )}
+                </Group>
               
 
               <Group gap="xs">

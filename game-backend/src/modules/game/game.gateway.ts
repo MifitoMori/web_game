@@ -27,17 +27,20 @@ type AuthPayload = {
 interface ClientWithUser extends Socket {
   userId?: number;
   nickname?: string;
+  title?: string;
   role?: Role;
 }
 
 type AuthenticatedClient = ClientWithUser & {
   userId: number;
   nickname: string;
+  title?: string;
 };
 
 type PublicPlayerGameState = {
   userId: number;
   nickname: string;
+  title?: string;
   spawnIndex: number;
   hp: number;
   maxHp: number;
@@ -53,6 +56,7 @@ type PublicPlayerGameState = {
 type PublicPlayerPositionState = {
   userId: number;
   nickname: string;
+  title?: string;
   spawnIndex: number;
   x: number;
   y: number;
@@ -91,9 +95,11 @@ type GameInvite = {
   id: string;
   inviterId: number;
   inviterNickname: string;
+  inviterTitle?: string;
   inviterSocketId: string;
   inviteeId: number;
   inviteeNickname: string;
+  inviteeTitle?: string;
   expiresAt: number;
   timeout: NodeJS.Timeout;
 };
@@ -177,6 +183,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return {
       userId: playerState.userId,
       nickname: playerState.nickname,
+      title: playerState.title,
       spawnIndex: playerState.spawnIndex,
       hp: playerState.hp,
       maxHp: playerState.maxHp,
@@ -200,6 +207,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return {
       userId: playerState.userId,
       nickname: playerState.nickname,
+      title: playerState.title,
       spawnIndex: playerState.spawnIndex,
       x: playerState.position.x,
       y: playerState.position.y,
@@ -454,6 +462,22 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         id: true,
         login: true,
         role: true,
+        inventoryItems: {
+          where: {
+            isEquipped: true,
+            catalogItem: {
+              type: 'title',
+            },
+          },
+          take: 1,
+          select: {
+            catalogItem: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -463,6 +487,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.userId = user.id;
     client.nickname = user.login;
+    client.title = user.inventoryItems[0]?.catalogItem.name;
     client.role = user.role;
 
     return true;
@@ -539,6 +564,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.emit('authSuccess', {
       userId: client.userId,
       nickname: client.nickname,
+      title: client.title,
     });
   }
 
@@ -599,6 +625,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       socketId: client.id,
       userId: client.userId,
       nickname: client.nickname,
+      title: client.title,
       joinedAt: Date.now(),
     };
 
@@ -737,6 +764,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       id: inviteId,
       inviterId: client.userId,
       inviterNickname: client.nickname,
+      inviterTitle: client.title,
       inviterSocketId: client.id,
       inviteeId: friendId,
       inviteeNickname: friend.login,
@@ -830,12 +858,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       socketId: inviterSocketId,
       userId: invite.inviterId,
       nickname: invite.inviterNickname,
+      title: invite.inviterTitle,
       joinedAt: Date.now(),
     };
     const inviteePlayer: Player = {
       socketId: client.id,
       userId: client.userId,
       nickname: client.nickname,
+      title: client.title,
       joinedAt: Date.now(),
     };
     const { roomId } = this.gameService.createDirectMatch(inviterPlayer, inviteePlayer);

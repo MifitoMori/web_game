@@ -275,6 +275,22 @@ export class UsersService {
             level: true,
           },
         },
+        inventoryItems: {
+          where: {
+            isEquipped: true,
+            catalogItem: {
+              type: 'title',
+            },
+          },
+          take: 1,
+          select: {
+            catalogItem: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -291,7 +307,10 @@ export class UsersService {
         avatarUrl: user.avatarUrl,
         createdAt: user.createdAt,
       },
-      profile: user.profile,
+      profile: {
+        ...user.profile,
+        title: user.inventoryItems[0]?.catalogItem.name,
+      },
     };
   }
 

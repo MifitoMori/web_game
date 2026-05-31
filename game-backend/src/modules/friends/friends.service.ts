@@ -10,6 +10,11 @@ type FriendUser = {
   id: number;
   login: string;
   avatarUrl: string | null;
+  inventoryItems?: Array<{
+    catalogItem: {
+      name: string;
+    };
+  }>;
   profile: {
     level: number;
   } | null;
@@ -23,6 +28,22 @@ export class FriendsService {
     id: true,
     login: true,
     avatarUrl: true,
+    inventoryItems: {
+      where: {
+        isEquipped: true,
+        catalogItem: {
+          type: 'title',
+        },
+      },
+      take: 1,
+      select: {
+        catalogItem: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    },
     profile: {
       select: {
         level: true,
@@ -34,6 +55,7 @@ export class FriendsService {
     return {
       id: user.id.toString(),
       nickname: user.login,
+      title: user.inventoryItems?.[0]?.catalogItem.name,
       level: user.profile?.level ?? 1,
       avatar: user.avatarUrl ?? undefined,
     };

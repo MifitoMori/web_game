@@ -1,17 +1,19 @@
 export default class HUD {
-    constructor(scene, player, playerName = 'Игрок') {
+    constructor(scene, player, playerName = 'Игрок', playerTitle = '') {
         this.scene = scene;
         this.player = player;
         this.playerNameValue = playerName;
+        this.playerTitleValue = playerTitle;
         this.opponent = null;
         this.opponentNameValue = '';
+        this.opponentTitleValue = '';
 
         this.panelX = 20;
         this.panelY = 20;
         this.panelWidth = 250;
-        this.panelHeight = 110;
+        this.panelHeight = 125;
         this.opponentPanelWidth = 250;
-        this.opponentPanelHeight = 88;
+        this.opponentPanelHeight = 105;
         this.opponentPanelY = 20;
         
         this.create();
@@ -31,22 +33,30 @@ export default class HUD {
             fontFamily: 'Arial',
             fontStyle: 'bold'
         });
+
+        this.playerTitle = this.scene.add.text(this.panelX + 60, this.panelY + 34, this.playerTitleValue, {
+            fontSize: '11px',
+            fill: '#d8a8ff',
+            fontFamily: 'Arial',
+            fontStyle: 'bold'
+        });
+        this.playerTitle.setVisible(Boolean(this.playerTitleValue));
         
-        this.hpBarBg = this.scene.add.rectangle(this.panelX + 60, this.panelY + 53, 170, 15, 0x8e0101);
+        this.hpBarBg = this.scene.add.rectangle(this.panelX + 60, this.panelY + 68, 170, 15, 0x8e0101);
         this.hpBarBg.setOrigin(0, 0);
         
-        this.hpBar = this.scene.add.rectangle(this.panelX + 60, this.panelY + 53, 170, 15, 0x33ff33);
+        this.hpBar = this.scene.add.rectangle(this.panelX + 60, this.panelY + 68, 170, 15, 0x33ff33);
         this.hpBar.setOrigin(0, 0);
         
-        this.hpText = this.scene.add.text(this.panelX + 60, this.panelY + 40, 'HP: 100', {
+        this.hpText = this.scene.add.text(this.panelX + 60, this.panelY + 55, 'HP: 100', {
             fontSize: '12px',
             fill: '#ffffff'
         });
         
-        const bulletIcon = this.scene.add.image(this.panelX + 65, this.panelY + 85, 'bullet');
+        const bulletIcon = this.scene.add.image(this.panelX + 65, this.panelY + 100, 'bullet');
         bulletIcon.setScale(1);
         
-        this.ammoText = this.scene.add.text(this.panelX + 80, this.panelY + 75, '30 / 30', {
+        this.ammoText = this.scene.add.text(this.panelX + 80, this.panelY + 90, '30 / 30', {
             fontSize: '16px',
             fill: '#ffaa00',
             fontFamily: 'Arial',
@@ -57,6 +67,7 @@ export default class HUD {
             panelBg,
             playerIcon,
             this.playerName,
+            this.playerTitle,
             this.hpBarBg,
             this.hpBar,
             this.hpText,
@@ -87,20 +98,28 @@ export default class HUD {
             fontStyle: 'bold'
         });
 
-        this.opponentHpText = this.scene.add.text(x + 20, this.opponentPanelY + 42, 'HP: 100', {
+        this.opponentTitle = this.scene.add.text(x + 20, this.opponentPanelY + 35, '', {
+            fontSize: '11px',
+            fill: '#d8a8ff',
+            fontFamily: 'Arial',
+            fontStyle: 'bold'
+        });
+
+        this.opponentHpText = this.scene.add.text(x + 20, this.opponentPanelY + 58, 'HP: 100', {
             fontSize: '12px',
             fill: '#ffffff'
         });
 
-        this.opponentHpBarBg = this.scene.add.rectangle(x + 20, this.opponentPanelY + 58, 210, 15, 0x8e0101);
+        this.opponentHpBarBg = this.scene.add.rectangle(x + 20, this.opponentPanelY + 74, 210, 15, 0x8e0101);
         this.opponentHpBarBg.setOrigin(0, 0);
 
-        this.opponentHpBar = this.scene.add.rectangle(x + 20, this.opponentPanelY + 58, 210, 15, 0xff3333);
+        this.opponentHpBar = this.scene.add.rectangle(x + 20, this.opponentPanelY + 74, 210, 15, 0xff3333);
         this.opponentHpBar.setOrigin(0, 0);
 
         this.opponentElements = [
             this.opponentPanelBg,
             this.opponentName,
+            this.opponentTitle,
             this.opponentHpText,
             this.opponentHpBarBg,
             this.opponentHpBar
@@ -113,15 +132,26 @@ export default class HUD {
         return this.scene.sys.game.config.width - this.opponentPanelWidth - 20;
     }
 
-    setOpponent(opponent, nickname = '') {
+    setPlayerIdentity(nickname = '', title = '') {
+        this.playerNameValue = nickname || this.playerNameValue;
+        this.playerTitleValue = title || '';
+        this.playerName.setText(this.playerNameValue);
+        this.playerTitle.setText(this.playerTitleValue);
+        this.playerTitle.setVisible(Boolean(this.playerTitleValue));
+    }
+
+    setOpponent(opponent, nickname = '', title = '') {
         this.opponent = opponent;
         this.opponentNameValue = nickname || opponent?.nickname || '';
+        this.opponentTitleValue = title || opponent?.title || '';
 
         const isVisible = Boolean(opponent);
         this.opponentElements.forEach((element) => element.setVisible(isVisible));
 
         if (isVisible) {
             this.opponentName.setText(this.opponentNameValue);
+            this.opponentTitle.setText(this.opponentTitleValue);
+            this.opponentTitle.setVisible(Boolean(this.opponentTitleValue));
         }
     }
     

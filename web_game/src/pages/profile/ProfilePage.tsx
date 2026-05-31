@@ -92,9 +92,16 @@ const ProfilePage: React.FC = () => {
               </Avatar>
             </Group>
 
-            <Title order={2} ta="center">
-              {profile.username}
-            </Title>
+            <Group justify="center" gap="xs">
+              <Title order={2} ta="center">
+                {profile.username}
+              </Title>
+              {loadout.title && (
+                <Badge variant="light" color="grape" size="lg">
+                  {loadout.title.name}
+                </Badge>
+              )}
+            </Group>
             <Text ta="center" c="dimmed" size="sm">
               {profile.firstName} {profile.lastName}
             </Text>

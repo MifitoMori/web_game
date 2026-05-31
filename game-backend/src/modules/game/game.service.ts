@@ -4,6 +4,7 @@ export interface Player {
   socketId: string;
   userId: number;
   nickname: string;
+  title?: string;
   joinedAt: number;
   gameSocketId?: string;
   disconnectedAt?: number;
@@ -19,6 +20,7 @@ export interface PlayerPosition {
 export interface PlayerGameState {
   userId: number;
   nickname: string;
+  title?: string;
   lobbySocketId: string;
   gameSocketId?: string;
   spawnIndex: number;
@@ -601,6 +603,7 @@ export class GameService {
     return {
       userId: player.userId,
       nickname: player.nickname,
+      title: player.title,
       lobbySocketId: player.socketId,
       gameSocketId: player.gameSocketId,
       spawnIndex,

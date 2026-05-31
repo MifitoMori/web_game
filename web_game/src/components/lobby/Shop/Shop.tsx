@@ -18,7 +18,6 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconCategory,
-  IconCheck,
   IconCoin,
   IconCrown,
   IconCube,
@@ -173,12 +172,6 @@ const Shop: React.FC<ShopProps> = ({ credits, onPurchase }) => {
           ),
         );
 
-        notifications.show({
-          title: 'Покупка совершена!',
-          message: `Вы приобрели ${selectedItem.name}`,
-          color: 'green',
-          icon: <IconCheck size={16} />,
-        });
       }
 
       setSelectedItem(null);

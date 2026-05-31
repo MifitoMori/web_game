@@ -34,6 +34,7 @@ type ActiveMatchState = {
   opponent?: unknown;
   playerId?: number;
   playerName?: string;
+  playerTitle?: string;
   serverIp?: string;
 };
 
@@ -143,6 +144,7 @@ const LobbyPage: React.FC = () => {
         opponent: data.opponent,
         playerId: user?.id,
         playerName: profileData?.profile?.username || '\u0418\u0433\u0440\u043e\u043a',
+        playerTitle: profileData?.loadout?.title?.name,
         serverIp: serverIp,
       };
 
@@ -504,6 +506,7 @@ const LobbyPage: React.FC = () => {
     ? {
         id: profileData.profile.id,
         nickname: profileData.profile.username,
+        title: profileData.loadout.title?.name,
         level: profileData.profile.level,
         avatar: profileData.profile.avatar ?? undefined,
       }

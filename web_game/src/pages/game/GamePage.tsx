@@ -10,6 +10,7 @@ type GameLocationState = {
   opponent?: any;
   playerId?: number;
   playerName?: string;
+  playerTitle?: string;
   serverIp?: string;
 };
 
@@ -53,7 +54,7 @@ class NetworkService {
 }
 
 const GamePage: React.FC = () => {
-  const gameClientVersion = '20260530-fixed-world';
+  const gameClientVersion = '20260531-titles';
   const navigate = useNavigate();
   const location = useLocation();
   const [showExitModal, setShowExitModal] = useState(false);
@@ -108,7 +109,10 @@ const GamePage: React.FC = () => {
       params.set('playerId', String(locationState.playerId));
     }
     if (locationState.playerName) {
-      params.set('playerName', encodeURIComponent(locationState.playerName));
+      params.set('playerName', locationState.playerName);
+    }
+    if (locationState.playerTitle) {
+      params.set('playerTitle', locationState.playerTitle);
     }
     if (locationState.serverIp) {
       params.set('server', locationState.serverIp);

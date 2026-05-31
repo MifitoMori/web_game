@@ -1,6 +1,6 @@
 // main.js
-import { WORLD_HEIGHT, WORLD_WIDTH } from './config/world.js?v=20260530-fixed-world';
-import GameScene from './scenes/GameScene.js?v=20260530-fixed-world';
+import { WORLD_HEIGHT, WORLD_WIDTH } from './config/world.js?v=20260531-titles';
+import GameScene from './scenes/GameScene.js?v=20260531-titles';
 
 // Функция ожидания готовности контейнера
 function waitForContainer() {

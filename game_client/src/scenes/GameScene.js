@@ -1,12 +1,12 @@
-import { PLAYER_SPAWNS, WORLD_CENTER_X, WORLD_CENTER_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../config/world.js?v=20260530-fixed-world';
-import Player from '../entities/Player.js?v=20260530-fixed-world';
-import Enemy from '../entities/Enemy.js?v=20260530-fixed-world';
-import OpponentPlayer from '../entities/OpponentPlayer.js?v=20260530-fixed-world';
-import HUD from '../ui/HUD.js?v=20260530-fixed-world';
-import AmmoPack from '../items/AmmoPack.js?v=20260530-fixed-world';
-import HealthPack from '../items/HealthPack.js?v=20260530-fixed-world';
-import Effects from '../utils/Effects.js?v=20260530-fixed-world'; 
-import { multiplayerSocket } from '../network/socket-client.js?v=20260530-fixed-world';
+import { PLAYER_SPAWNS, WORLD_CENTER_X, WORLD_CENTER_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../config/world.js?v=20260531-titles';
+import Player from '../entities/Player.js?v=20260531-titles';
+import Enemy from '../entities/Enemy.js?v=20260531-titles';
+import OpponentPlayer from '../entities/OpponentPlayer.js?v=20260531-titles';
+import HUD from '../ui/HUD.js?v=20260531-titles';
+import AmmoPack from '../items/AmmoPack.js?v=20260531-titles';
+import HealthPack from '../items/HealthPack.js?v=20260531-titles';
+import Effects from '../utils/Effects.js?v=20260531-titles'; 
+import { multiplayerSocket } from '../network/socket-client.js?v=20260531-titles';
 
 export default class GameScene extends Phaser.Scene {
     constructor() {
@@ -33,6 +33,7 @@ export default class GameScene extends Phaser.Scene {
         this.roomId = data?.roomId || null;
         this.playerId = data?.playerId || null;
         this.playerName = data?.playerName || 'Игрок';
+        this.playerTitle = data?.playerTitle || '';
         this.serverIp = data?.serverIp || null;
         
 
@@ -42,6 +43,7 @@ export default class GameScene extends Phaser.Scene {
             this.roomId = urlParams.get('roomId');
             this.playerId = urlParams.get('playerId') ? parseInt(urlParams.get('playerId')) : null;
             this.playerName = urlParams.get('playerName') || 'Игрок';
+            this.playerTitle = urlParams.get('playerTitle') || '';
             this.serverIp = urlParams.get('server');
         }
         
@@ -50,6 +52,7 @@ export default class GameScene extends Phaser.Scene {
             roomId: this.roomId,
             playerId: this.playerId,
             playerName: this.playerName,
+            playerTitle: this.playerTitle,
             serverIp: this.serverIp
         });
     }
@@ -113,10 +116,10 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // Создание UI
-        this.hud = new HUD(this, this.player, this.playerName);
+        this.hud = new HUD(this, this.player, this.playerName, this.playerTitle);
 
         if (this.opponent) {
-            this.hud.setOpponent(this.opponent, this.opponent.nickname);
+            this.hud.setOpponent(this.opponent, this.opponent.nickname, this.opponent.title);
         }
 
         this.effects = new Effects(this);
@@ -262,6 +265,13 @@ export default class GameScene extends Phaser.Scene {
         if (typeof playerState.reserveAmmo === 'number') {
             this.player.reserveAmmo = playerState.reserveAmmo;
         }
+
+        if (playerState.nickname) {
+            this.playerName = playerState.nickname;
+        }
+
+        this.playerTitle = playerState.title || '';
+        this.hud?.setPlayerIdentity(this.playerName, this.playerTitle);
     }
 
     createOpponentFromServer(opponent) {
@@ -283,6 +293,7 @@ export default class GameScene extends Phaser.Scene {
             position.y,
             opponent.nickname
         );
+        this.opponent.title = opponent.title || '';
         this.opponent.rotation = position.rotation;
         this.opponent.setAimRotation(position.rotation);
 
@@ -294,7 +305,7 @@ export default class GameScene extends Phaser.Scene {
             this.opponent.maxHp = opponent.maxHp;
         }
 
-        this.hud?.setOpponent(this.opponent, opponent.nickname);
+        this.hud?.setOpponent(this.opponent, opponent.nickname, opponent.title);
     }
 
     syncItemsFromServer(items = []) {
