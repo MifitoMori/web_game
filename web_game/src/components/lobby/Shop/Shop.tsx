@@ -22,7 +22,6 @@ import {
   IconCrown,
   IconCube,
   IconShoppingCart,
-  IconSparkles,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import type { ShopCatalogItem, ShopCategory, ShopItem } from '@app-types/shop';
@@ -36,11 +35,10 @@ interface ShopProps {
 
 const categoryNames: Record<ShopCatalogItem['type'], string> = {
   skin: 'Скины',
-  trail: 'Следы',
   title: 'Титулы',
 };
 
-const categoryOrder: ShopCatalogItem['type'][] = ['skin', 'trail', 'title'];
+const categoryOrder: ShopCatalogItem['type'][] = ['skin', 'title'];
 
 const Shop: React.FC<ShopProps> = ({ credits, onPurchase }) => {
   const [opened, { open, close }] = useDisclosure(false);
@@ -127,8 +125,6 @@ const Shop: React.FC<ShopProps> = ({ credits, onPurchase }) => {
     switch (type) {
       case 'skin':
         return <IconCube size={20} />;
-      case 'trail':
-        return <IconSparkles size={20} />;
       case 'title':
         return <IconCrown size={20} />;
       default:
@@ -140,8 +136,6 @@ const Shop: React.FC<ShopProps> = ({ credits, onPurchase }) => {
     switch (type) {
       case 'skin':
         return 'Скин';
-      case 'trail':
-        return 'След';
       case 'title':
         return 'Титул';
       default:

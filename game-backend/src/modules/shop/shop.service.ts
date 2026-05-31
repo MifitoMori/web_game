@@ -13,7 +13,7 @@ export class ShopService {
     const catalogItems = await this.prisma.catalogItem.findMany({
       where: {
         type: {
-          in: ['skin', 'trail', 'title'],
+          in: ['skin', 'title'],
         },
       },
       orderBy: { id: 'asc' },
@@ -45,7 +45,7 @@ export class ShopService {
         where: {
           slug,
           type: {
-            in: ['skin', 'trail', 'title'],
+            in: ['skin', 'title'],
           },
         },
       });

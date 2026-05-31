@@ -71,6 +71,22 @@ export class UsersService {
         profile: {
           create: {},
         },
+        inventoryItems: {
+          create: [
+            {
+              catalogItem: {
+                connect: { slug: 'hitman-skin' },
+              },
+              isEquipped: true,
+            },
+            {
+              catalogItem: {
+                connect: { slug: 'newcomer-title' },
+              },
+              isEquipped: true,
+            },
+          ],
+        },
       },
       select: this.safeUserSelect,
     });
@@ -182,7 +198,7 @@ export class UsersService {
           where: {
             catalogItem: {
               type: {
-                in: ['skin', 'trail', 'title'],
+                in: ['skin', 'title'],
               },
             },
           },
@@ -362,26 +378,4 @@ export class UsersService {
     });
   }
 
-  async unequipItem(userId: number, type: 'skin' | 'trail' | 'title') {
-    const updatedItems = await this.prisma.inventoryItem.updateMany({
-      where: {
-        userId,
-        catalogItem: {
-          type,
-        },
-        isEquipped: true,
-      },
-      data: {
-        isEquipped: false,
-      },
-    });
-
-    if (updatedItems.count === 0) {
-      throw new BadRequestException('В этом слоте нет экипированного предмета');
-    }
-
-    return {
-      success: true,
-    };
-  }
 }

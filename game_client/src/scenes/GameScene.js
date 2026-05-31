@@ -1,12 +1,13 @@
-import { PLAYER_SPAWNS, WORLD_CENTER_X, WORLD_CENTER_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../config/world.js?v=20260531-titles';
-import Player from '../entities/Player.js?v=20260531-titles';
-import Enemy from '../entities/Enemy.js?v=20260531-titles';
-import OpponentPlayer from '../entities/OpponentPlayer.js?v=20260531-titles';
-import HUD from '../ui/HUD.js?v=20260531-titles';
-import AmmoPack from '../items/AmmoPack.js?v=20260531-titles';
-import HealthPack from '../items/HealthPack.js?v=20260531-titles';
-import Effects from '../utils/Effects.js?v=20260531-titles'; 
-import { multiplayerSocket } from '../network/socket-client.js?v=20260531-titles';
+import { PLAYER_SPAWNS, WORLD_CENTER_X, WORLD_CENTER_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../config/world.js?v=20260531-skins-v2';
+import { DEFAULT_SKIN_SLUG, preloadSkinAssets } from '../config/skins.js?v=20260531-skins-v2';
+import Player from '../entities/Player.js?v=20260531-skins-v2';
+import Enemy from '../entities/Enemy.js?v=20260531-skins-v2';
+import OpponentPlayer from '../entities/OpponentPlayer.js?v=20260531-skins-v2';
+import HUD from '../ui/HUD.js?v=20260531-skins-v2';
+import AmmoPack from '../items/AmmoPack.js?v=20260531-skins-v2';
+import HealthPack from '../items/HealthPack.js?v=20260531-skins-v2';
+import Effects from '../utils/Effects.js?v=20260531-skins-v2'; 
+import { multiplayerSocket } from '../network/socket-client.js?v=20260531-skins-v2';
 
 export default class GameScene extends Phaser.Scene {
     constructor() {
@@ -34,6 +35,7 @@ export default class GameScene extends Phaser.Scene {
         this.playerId = data?.playerId || null;
         this.playerName = data?.playerName || 'Игрок';
         this.playerTitle = data?.playerTitle || '';
+        this.playerSkin = data?.playerSkin || DEFAULT_SKIN_SLUG;
         this.serverIp = data?.serverIp || null;
         
 
@@ -44,6 +46,7 @@ export default class GameScene extends Phaser.Scene {
             this.playerId = urlParams.get('playerId') ? parseInt(urlParams.get('playerId')) : null;
             this.playerName = urlParams.get('playerName') || 'Игрок';
             this.playerTitle = urlParams.get('playerTitle') || '';
+            this.playerSkin = urlParams.get('playerSkin') || DEFAULT_SKIN_SLUG;
             this.serverIp = urlParams.get('server');
         }
         
@@ -53,6 +56,7 @@ export default class GameScene extends Phaser.Scene {
             playerId: this.playerId,
             playerName: this.playerName,
             playerTitle: this.playerTitle,
+            playerSkin: this.playerSkin,
             serverIp: this.serverIp
         });
     }
@@ -62,6 +66,7 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('background', 'assets/background2.png');
         this.load.image('player_hold', 'assets/kenney/player.png');
         this.load.image('player', 'assets/kenney/player_battle.png');
+        preloadSkinAssets(this.load);
         this.load.image('bullet', 'assets/kenney/bullet_gun.png');
         this.load.image('weapon', 'assets/kenney/weapon_gun.png');
         this.load.image('weapon_silencer', 'assets/kenney/weapon_silencer.png');
@@ -103,7 +108,7 @@ export default class GameScene extends Phaser.Scene {
         this.setupWalls();
         
         // Создание игрока
-        this.player = new Player(this, PLAYER_SPAWNS[0].x, PLAYER_SPAWNS[0].y);
+        this.player = new Player(this, PLAYER_SPAWNS[0].x, PLAYER_SPAWNS[0].y, this.playerSkin);
           
         if (this.isMultiplayer) {
             // Мультиплеерный режим
@@ -251,6 +256,8 @@ export default class GameScene extends Phaser.Scene {
             if (this.player.weapon) {
                 this.player.weapon.setPosition(position.x, position.y);
                 this.player.weapon.rotation = position.rotation;
+                this.player.weapon.x = position.x + Math.cos(position.rotation) * 20;
+                this.player.weapon.y = position.y + Math.sin(position.rotation) * 20;
             }
         }
 
@@ -271,11 +278,25 @@ export default class GameScene extends Phaser.Scene {
         }
 
         this.playerTitle = playerState.title || '';
+        this.playerSkin = playerState.skinSlug || this.playerSkin || DEFAULT_SKIN_SLUG;
+        this.player.setSkin(this.playerSkin);
         this.hud?.setPlayerIdentity(this.playerName, this.playerTitle);
     }
 
     createOpponentFromServer(opponent) {
-        if (!opponent || this.opponent) {
+        if (!opponent) {
+            return;
+        }
+
+        if (this.opponent) {
+            this.opponent.nickname = opponent.nickname || this.opponent.nickname;
+            this.opponent.title = opponent.title || '';
+
+            if (opponent.skinSlug) {
+                this.opponent.setSkin(opponent.skinSlug);
+            }
+
+            this.hud?.setOpponent(this.opponent, this.opponent.nickname, this.opponent.title);
             return;
         }
 
@@ -291,7 +312,8 @@ export default class GameScene extends Phaser.Scene {
             this,
             position.x,
             position.y,
-            opponent.nickname
+            opponent.nickname,
+            opponent.skinSlug || DEFAULT_SKIN_SLUG
         );
         this.opponent.title = opponent.title || '';
         this.opponent.rotation = position.rotation;

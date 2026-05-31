@@ -19,7 +19,7 @@ type BackendInventoryItem = {
   name: string;
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  type: 'skin' | 'trail' | 'title';
+  type: 'skin' | 'title';
   equipped: boolean;
   unlocked: boolean;
 };
@@ -71,7 +71,6 @@ const buildStats = (profile: BackendProfile): GameStats => {
 
 const buildLoadout = (inventory: InventoryItem[]): Loadout => ({
   skin: inventory.find((item) => item.type === 'skin' && item.equipped),
-  trail: inventory.find((item) => item.type === 'trail' && item.equipped),
   title: inventory.find((item) => item.type === 'title' && item.equipped),
 });
 
@@ -187,40 +186,6 @@ export const useProfile = () => {
     }
   };
 
-  const unequipItem = async (itemType: string) => {
-    try {
-      const response = await apiFetch(getApiUrl('/api/profile/unequip'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ type: itemType }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await extractErrorMessage(response));
-      }
-
-      await loadProfile(false);
-
-      notifications.show({
-        title: 'Предмет снят',
-        message: 'Предмет убран из снаряжения',
-        color: 'blue',
-      });
-
-      return true;
-    } catch (error) {
-      notifications.show({
-        title: 'Ошибка',
-        message: error instanceof Error ? error.message : 'Не удалось снять предмет',
-        color: 'red',
-      });
-
-      return false;
-    }
-  };
-
   const purchaseItem = async (shopItem: ShopItem): Promise<boolean> => {
     try {
       const slug = 'slug' in shopItem && typeof shopItem.slug === 'string' ? shopItem.slug : null;
@@ -273,7 +238,6 @@ export const useProfile = () => {
     inventory,
     loadProfile,
     equipItem,
-    unequipItem,
     purchaseItem,
   };
 };

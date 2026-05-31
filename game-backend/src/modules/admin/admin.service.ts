@@ -132,7 +132,7 @@ export class AdminService {
     return this.prisma.catalogItem.findMany({
       where: {
         type: {
-          in: ['skin', 'trail', 'title'],
+          in: ['skin', 'title'],
         },
       },
       orderBy: { id: 'asc' },

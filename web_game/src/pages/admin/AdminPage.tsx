@@ -68,7 +68,6 @@ const rarityOptions = [
 
 const typeOptions = [
   { value: 'skin', label: 'Скин' },
-  { value: 'trail', label: 'След' },
   { value: 'title', label: 'Титул' },
 ];
 
@@ -232,8 +231,8 @@ const AdminPage = () => {
       nextErrors.description = 'Введите описание товара';
     }
 
-    if (!Number.isFinite(catalogForm.price) || catalogForm.price <= 0) {
-      nextErrors.price = 'Цена должна быть больше 0';
+    if (!Number.isFinite(catalogForm.price) || catalogForm.price < 0) {
+      nextErrors.price = 'Цена должна быть не меньше 0';
     }
 
     if (!catalogForm.rarity) {

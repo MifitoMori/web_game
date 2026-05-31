@@ -2,9 +2,9 @@ import {
   IsIn,
   IsNotEmpty,
   IsNumber,
-  IsPositive,
   IsString,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 
@@ -28,11 +28,11 @@ export class CreateCatalogItemDto {
 
   @IsString()
   @IsNotEmpty()
-  @IsIn(['skin', 'trail', 'title'])
+  @IsIn(['skin', 'title'])
   type: string;
 
   @IsNumber()
-  @IsPositive()
+  @Min(0)
   price: number;
   
   @IsString()

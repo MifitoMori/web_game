@@ -4,7 +4,6 @@ import {
   IconCategory,
   IconCrown,
   IconCube,
-  IconSparkles,
 } from '@tabler/icons-react';
 import type { InventoryItem } from '@app-types/profile';
 import classes from './ProfileInventory.module.css';
@@ -12,13 +11,11 @@ import classes from './ProfileInventory.module.css';
 interface ProfileInventoryProps {
   inventory: InventoryItem[];
   onEquip: (item: InventoryItem) => void;
-  onUnequip: (itemType: string) => void;
 }
 
 const ProfileInventory: React.FC<ProfileInventoryProps> = ({
   inventory,
   onEquip,
-  onUnequip,
 }) => {
   const [activeTab, setActiveTab] = useState<string | null>('all');
 
@@ -56,8 +53,6 @@ const ProfileInventory: React.FC<ProfileInventoryProps> = ({
     switch (type) {
       case 'skin':
         return <IconCube size={16} />;
-      case 'trail':
-        return <IconSparkles size={16} />;
       case 'title':
         return <IconCrown size={16} />;
       default:
@@ -85,9 +80,6 @@ const ProfileInventory: React.FC<ProfileInventoryProps> = ({
           <Tabs.Tab value="skin" leftSection={<IconCube size={16} />}>
             Скины
           </Tabs.Tab>
-          <Tabs.Tab value="trail" leftSection={<IconSparkles size={16} />}>
-            Следы
-          </Tabs.Tab>
           <Tabs.Tab value="title" leftSection={<IconCrown size={16} />}>
             Титулы
           </Tabs.Tab>
@@ -103,16 +95,16 @@ const ProfileInventory: React.FC<ProfileInventoryProps> = ({
           filteredInventory.map((item) => (
             <Grid.Col key={item.id} span={6}>
               <Paper className={classes.inventoryItem} withBorder p="sm">
-                <Group justify="space-between" wrap="nowrap">
-                  <Group gap="sm" wrap="nowrap">
+                <div className={classes.inventoryItemContent}>
+                  <Group gap="sm" wrap="nowrap" className={classes.inventoryItemInfo}>
                     <ThemeIcon color={getRarityColor(item.rarity)} variant="light" size="lg">
                       {getTypeIcon(item.type)}
                     </ThemeIcon>
-                    <div style={{ flex: 1 }}>
+                    <div className={classes.inventoryItemText}>
                       <Text size="sm" fw={500}>
                         {item.name}
                       </Text>
-                      <Text size="xs" c="dimmed">
+                      <Text size="xs" c="dimmed" className={classes.inventoryDescription}>
                         {item.description}
                       </Text>
                       <Badge
@@ -125,15 +117,23 @@ const ProfileInventory: React.FC<ProfileInventoryProps> = ({
                       </Badge>
                     </div>
                   </Group>
-                  <Button
-                    size="xs"
-                    variant={item.equipped ? 'filled' : 'light'}
-                    color={item.equipped ? 'green' : 'blue'}
-                    onClick={() => (item.equipped ? onUnequip(item.type) : onEquip(item))}
-                  >
-                    {item.equipped ? 'Надето' : 'Надеть'}
-                  </Button>
-                </Group>
+                  <div className={classes.inventoryItemAction}>
+                    {item.equipped ? (
+                      <Badge size="lg" color="green" variant="filled">
+                        Надето
+                      </Badge>
+                    ) : (
+                      <Button
+                        size="xs"
+                        variant="light"
+                        color="blue"
+                        onClick={() => onEquip(item)}
+                      >
+                        Надеть
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </Paper>
             </Grid.Col>
           ))

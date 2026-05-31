@@ -12,7 +12,6 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { EquipItemDto } from './dto/equip-item.dto';
-import { UnequipItemDto } from './dto/unequip-item.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { Role } from '@prisma/client';
 import { LoggerService } from '../../common/logger/logger.service';
@@ -67,14 +66,5 @@ export class UsersController {
     @Body() dto: EquipItemDto,
   ) {
     return this.usersService.equipItem(req.user.userId, dto.inventoryItemId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Post('profile/unequip')
-  unequipItem(
-    @Req() req: { user: { userId: number; login: string; role: Role } },
-    @Body() dto: UnequipItemDto,
-  ) {
-    return this.usersService.unequipItem(req.user.userId, dto.type);
   }
 }

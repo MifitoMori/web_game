@@ -3,7 +3,7 @@ import type { InventoryItem } from './profile';
 export interface ShopItem {
   id: string | number;
   name: string;
-  type: 'skin' | 'trail' | 'title';
+  type: 'skin' | 'title';
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   price: number;

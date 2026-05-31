@@ -23,6 +23,45 @@
     transform: translateX(4px);
     box-shadow: var(--mantine-shadow-sm);
   }
+
+  .inventoryItemContent {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 86px;
+    gap: var(--mantine-spacing-sm);
+    align-items: center;
+    min-height: 72px;
+  }
+
+  .inventoryItemInfo {
+    min-width: 0;
+  }
+
+  .inventoryItemText {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .inventoryDescription {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.25;
+  }
+
+  .inventoryItemAction {
+    width: 86px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  .inventoryItemAction :global(.mantine-Button-root),
+  .inventoryItemAction :global(.mantine-Badge-root) {
+    max-width: 100%;
+    min-width: 68px;
+    justify-content: center;
+    white-space: nowrap;
+  }
   
   .lockedItem {
     background: light-dark(

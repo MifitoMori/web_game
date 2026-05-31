@@ -28,6 +28,7 @@ interface ClientWithUser extends Socket {
   userId?: number;
   nickname?: string;
   title?: string;
+  skinSlug?: string;
   role?: Role;
 }
 
@@ -35,12 +36,14 @@ type AuthenticatedClient = ClientWithUser & {
   userId: number;
   nickname: string;
   title?: string;
+  skinSlug?: string;
 };
 
 type PublicPlayerGameState = {
   userId: number;
   nickname: string;
   title?: string;
+  skinSlug?: string;
   spawnIndex: number;
   hp: number;
   maxHp: number;
@@ -57,6 +60,7 @@ type PublicPlayerPositionState = {
   userId: number;
   nickname: string;
   title?: string;
+  skinSlug?: string;
   spawnIndex: number;
   x: number;
   y: number;
@@ -96,10 +100,12 @@ type GameInvite = {
   inviterId: number;
   inviterNickname: string;
   inviterTitle?: string;
+  inviterSkinSlug?: string;
   inviterSocketId: string;
   inviteeId: number;
   inviteeNickname: string;
   inviteeTitle?: string;
+  inviteeSkinSlug?: string;
   expiresAt: number;
   timeout: NodeJS.Timeout;
 };
@@ -184,6 +190,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: playerState.userId,
       nickname: playerState.nickname,
       title: playerState.title,
+      skinSlug: playerState.skinSlug,
       spawnIndex: playerState.spawnIndex,
       hp: playerState.hp,
       maxHp: playerState.maxHp,
@@ -208,6 +215,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: playerState.userId,
       nickname: playerState.nickname,
       title: playerState.title,
+      skinSlug: playerState.skinSlug,
       spawnIndex: playerState.spawnIndex,
       x: playerState.position.x,
       y: playerState.position.y,
@@ -466,14 +474,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
           where: {
             isEquipped: true,
             catalogItem: {
-              type: 'title',
+              type: {
+                in: ['title', 'skin'],
+              },
             },
           },
-          take: 1,
           select: {
             catalogItem: {
               select: {
                 name: true,
+                slug: true,
+                type: true,
               },
             },
           },
@@ -487,7 +498,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.userId = user.id;
     client.nickname = user.login;
-    client.title = user.inventoryItems[0]?.catalogItem.name;
+    client.title = user.inventoryItems.find(
+      (item) => item.catalogItem.type === 'title',
+    )?.catalogItem.name;
+    client.skinSlug = user.inventoryItems.find(
+      (item) => item.catalogItem.type === 'skin',
+    )?.catalogItem.slug;
     client.role = user.role;
 
     return true;
@@ -565,6 +581,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: client.userId,
       nickname: client.nickname,
       title: client.title,
+      skinSlug: client.skinSlug,
     });
   }
 
@@ -626,6 +643,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: client.userId,
       nickname: client.nickname,
       title: client.title,
+      skinSlug: client.skinSlug,
       joinedAt: Date.now(),
     };
 
@@ -765,6 +783,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       inviterId: client.userId,
       inviterNickname: client.nickname,
       inviterTitle: client.title,
+      inviterSkinSlug: client.skinSlug,
       inviterSocketId: client.id,
       inviteeId: friendId,
       inviteeNickname: friend.login,
@@ -859,6 +878,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: invite.inviterId,
       nickname: invite.inviterNickname,
       title: invite.inviterTitle,
+      skinSlug: invite.inviterSkinSlug,
       joinedAt: Date.now(),
     };
     const inviteePlayer: Player = {
@@ -866,6 +886,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       userId: client.userId,
       nickname: client.nickname,
       title: client.title,
+      skinSlug: client.skinSlug,
       joinedAt: Date.now(),
     };
     const { roomId } = this.gameService.createDirectMatch(inviterPlayer, inviteePlayer);

@@ -23,7 +23,7 @@ export interface InventoryItem {
   id: string;
   slug?: string;
   name: string;
-  type: 'skin' | 'trail' | 'title';
+  type: 'skin' | 'title';
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   equipped: boolean;
@@ -32,7 +32,6 @@ export interface InventoryItem {
 
 export interface Loadout {
   skin?: InventoryItem;
-  trail?: InventoryItem;
   title?: InventoryItem;
 }
 

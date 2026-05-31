@@ -38,7 +38,7 @@ import classes from './ProfilePage.module.css';
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { profileData, isLoading, loadProfile, equipItem, unequipItem } = useProfile();
+  const { profileData, isLoading, loadProfile, equipItem } = useProfile();
   const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
 
   if (isLoading) {
@@ -187,7 +187,6 @@ const ProfilePage: React.FC = () => {
             <ProfileInventory
               inventory={inventory}
               onEquip={equipItem}
-              onUnequip={unequipItem}
             />
           </Stack>
         </Grid.Col>

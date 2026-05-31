@@ -1,8 +1,11 @@
+import { getSkinTextureKey } from '../config/skins.js?v=20260531-skins-v2';
+
 export default class Player extends Phaser.Physics.Arcade.Image {
-    constructor(scene, x, y) {
-        super(scene, x, y, 'player');
+    constructor(scene, x, y, skinSlug) {
+        super(scene, x, y, getSkinTextureKey(skinSlug));
         
         this.scene = scene;
+        this.skinSlug = skinSlug;
         this.speed = 2;
         this.hp = 100;
         this.maxHp = 100;
@@ -27,8 +30,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this.setScale(1);
         this.body.allowGravity = false;
         
-        this.body.setSize(this.width * 0.7, this.height * 0.7);
-        this.body.setOffset(this.width * 0.15, this.height * 0.15);
+        this.updateBodyBounds();
         
         this.weapon = scene.add.image(x, y, 'weapon');
         this.weapon.setScale(1);
@@ -36,6 +38,23 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         
         this.setupReloadIndicator();
         this.setupDashIndicator();
+    }
+
+    updateBodyBounds() {
+        this.body.setSize(this.width * 0.7, this.height * 0.7);
+        this.body.setOffset(this.width * 0.15, this.height * 0.15);
+    }
+
+    setSkin(skinSlug) {
+        const textureKey = getSkinTextureKey(skinSlug);
+
+        if (this.texture?.key === textureKey) {
+            return;
+        }
+
+        this.skinSlug = skinSlug;
+        this.setTexture(textureKey);
+        this.updateBodyBounds();
     }
     
     setupReloadIndicator() {
@@ -64,7 +83,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         let dashDirY = directionY;
         
         if (dashDirX === 0 && dashDirY === 0) {
-            const angle = this.rotation + 1.6;
+            const angle = this.rotation;
             dashDirX = Math.cos(angle);
             dashDirY = Math.sin(angle);
         } else {
@@ -138,7 +157,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
             this.weapon.x = this.x + Math.cos(angleToPointer) * 20;
             this.weapon.y = this.y + Math.sin(angleToPointer) * 20;
             this.weapon.rotation = angleToPointer;
-            this.rotation = angleToPointer - 1.6;
+            this.rotation = angleToPointer;
             return;
         }
         
@@ -162,7 +181,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this.weapon.x = this.x + Math.cos(angleToPointer) * 20;
         this.weapon.y = this.y + Math.sin(angleToPointer) * 20;
         this.weapon.rotation = angleToPointer;
-        this.rotation = angleToPointer - 1.6;
+        this.rotation = angleToPointer;
     }
     
     shoot(pointer, bulletsGroup) {

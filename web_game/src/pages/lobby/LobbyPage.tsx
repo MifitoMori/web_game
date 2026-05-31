@@ -35,6 +35,7 @@ type ActiveMatchState = {
   playerId?: number;
   playerName?: string;
   playerTitle?: string;
+  playerSkin?: string;
   serverIp?: string;
 };
 
@@ -145,6 +146,7 @@ const LobbyPage: React.FC = () => {
         playerId: user?.id,
         playerName: profileData?.profile?.username || '\u0418\u0433\u0440\u043e\u043a',
         playerTitle: profileData?.loadout?.title?.name,
+        playerSkin: data.player?.skinSlug || profileData?.loadout?.skin?.slug,
         serverIp: serverIp,
       };
 
@@ -472,6 +474,9 @@ const LobbyPage: React.FC = () => {
     navigate('/game', { 
       state: { 
         isMultiplayer: false,
+        playerName: profileData?.profile?.username || '\u0418\u0433\u0440\u043e\u043a',
+        playerTitle: profileData?.loadout?.title?.name,
+        playerSkin: profileData?.loadout?.skin?.slug,
         serverIp: serverIp
       } 
     });

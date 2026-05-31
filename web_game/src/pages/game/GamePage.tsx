@@ -11,6 +11,7 @@ type GameLocationState = {
   playerId?: number;
   playerName?: string;
   playerTitle?: string;
+  playerSkin?: string;
   serverIp?: string;
 };
 
@@ -54,7 +55,7 @@ class NetworkService {
 }
 
 const GamePage: React.FC = () => {
-  const gameClientVersion = '20260531-titles';
+  const gameClientVersion = '20260531-skins-v2';
   const navigate = useNavigate();
   const location = useLocation();
   const [showExitModal, setShowExitModal] = useState(false);
@@ -113,6 +114,9 @@ const GamePage: React.FC = () => {
     }
     if (locationState.playerTitle) {
       params.set('playerTitle', locationState.playerTitle);
+    }
+    if (locationState.playerSkin) {
+      params.set('playerSkin', locationState.playerSkin);
     }
     if (locationState.serverIp) {
       params.set('server', locationState.serverIp);
