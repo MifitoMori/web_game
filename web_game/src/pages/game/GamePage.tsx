@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Text, Center, Loader } from '@mantine/core';
+import { apiFetch, getApiUrl } from '@services/api';
 
 const ACTIVE_MATCH_STORAGE_KEY = 'activeMultiplayerMatch';
 
@@ -28,6 +29,19 @@ const readStoredMatchState = (): GameLocationState => {
 const clearStoredMatchState = () => {
   sessionStorage.removeItem(ACTIVE_MATCH_STORAGE_KEY);
 };
+
+const SOLO_REWARD_TEXT: Record<'victory' | 'defeat', string> = {
+  victory: '+50 опыта',
+  defeat: '+25 опыта',
+};
+
+const MULTIPLAYER_REWARD_TEXT: Record<'victory' | 'defeat', string> = {
+  victory: '+100 опыта и 50 кредитов',
+  defeat: '+25 опыта и 10 кредитов',
+};
+
+const isGameResult = (result: unknown): result is 'victory' | 'defeat' =>
+  result === 'victory' || result === 'defeat';
 
 // Сервис для определения IP
 class NetworkService {
@@ -65,6 +79,7 @@ const GamePage: React.FC = () => {
   const [gameUrl, setGameUrl] = useState<string>('http://localhost:8080');
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const soloResultSavedRef = useRef(false);
 
   // Получаем параметры из location state
   const routeState = (location.state as GameLocationState | null) || {};
@@ -73,6 +88,30 @@ const GamePage: React.FC = () => {
     routeState.roomId || routeState.isMultiplayer !== undefined
       ? routeState
       : storedMatchState;
+  const isMultiplayerGame = locationState.isMultiplayer === true;
+  const getRewardText = (result: 'victory' | 'defeat') =>
+    isMultiplayerGame ? MULTIPLAYER_REWARD_TEXT[result] : SOLO_REWARD_TEXT[result];
+
+  const saveSoloMatchResult = async (result: 'victory' | 'defeat') => {
+    if (soloResultSavedRef.current) {
+      return;
+    }
+
+    soloResultSavedRef.current = true;
+
+    const response = await apiFetch(getApiUrl('/api/profile/solo-match-result'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ result }),
+    });
+
+    if (!response.ok) {
+      soloResultSavedRef.current = false;
+      throw new Error(await response.text());
+    }
+  };
 
   // Определяем URL игры при загрузке компонента
   useEffect(() => {
@@ -127,7 +166,7 @@ const GamePage: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (!gameUrl || !event.origin) return;
       
       try {
@@ -140,8 +179,22 @@ const GamePage: React.FC = () => {
       const { type, data } = event.data || {};
       
       if (type === 'GAME_END') {
+        const result = data?.result;
+
         clearStoredMatchState();
-        setGameResult(data?.result);
+
+        if (isGameResult(result)) {
+          if (!isMultiplayerGame) {
+            try {
+              await saveSoloMatchResult(result);
+            } catch (error) {
+              console.error('Failed to save solo match result:', error);
+            }
+          }
+
+          setGameResult(result);
+        }
+
         setShowExitModal(true);
       }
       
@@ -152,7 +205,7 @@ const GamePage: React.FC = () => {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [gameUrl]);
+  }, [gameUrl, isMultiplayerGame]);
 
   const handleExit = () => {
     clearStoredMatchState();
@@ -302,9 +355,7 @@ const GamePage: React.FC = () => {
                     : 'Вы были повержены. Попробуйте снова!'}
                 </Text>
                 <Text size="sm" style={{ marginBottom: '30px', color: '#888' }}>
-                  {gameResult === 'victory' 
-                    ? '+100 опыта и 50 кредитов' 
-                    : '+25 опыта и 10 кредитов'}
+                  {getRewardText(gameResult)}
                 </Text>
                 <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
                   <Button 

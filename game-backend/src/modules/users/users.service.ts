@@ -13,6 +13,9 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly SOLO_WIN_EXPERIENCE = 50;
+  private readonly SOLO_LOSS_EXPERIENCE = 25;
+
   private readonly safeUserSelect = {
     id: true,
     email: true,
@@ -37,6 +40,16 @@ export class UsersService {
       },
     },
   } as const;
+
+  private calculateLevel(experience: number) {
+    let level = 1;
+
+    while (experience >= (level + 1) * 250) {
+      level += 1;
+    }
+
+    return level;
+  }
 
   findByLogin(login: string) {
     return this.prisma.user.findUnique({
@@ -378,4 +391,54 @@ export class UsersService {
     });
   }
 
+  async recordSoloMatchResult(userId: number, result: 'victory' | 'defeat') {
+    const rewardExperience =
+      result === 'victory' ? this.SOLO_WIN_EXPERIENCE : this.SOLO_LOSS_EXPERIENCE;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        profileId: true,
+        profile: {
+          select: {
+            experience: true,
+          },
+        },
+      },
+    });
+
+    if (!user?.profile) {
+      throw new NotFoundException('Профиль пользователя не найден');
+    }
+
+    const nextExperience = user.profile.experience + rewardExperience;
+    const updatedProfile = await this.prisma.profile.update({
+      where: { id: user.profileId },
+      data: {
+        totalGames: { increment: 1 },
+        wins: result === 'victory' ? { increment: 1 } : undefined,
+        losses: result === 'defeat' ? { increment: 1 } : undefined,
+        experience: { increment: rewardExperience },
+        level: this.calculateLevel(nextExperience),
+      },
+      select: {
+        totalGames: true,
+        wins: true,
+        losses: true,
+        credits: true,
+        experience: true,
+        level: true,
+      },
+    });
+
+    return {
+      success: true,
+      result,
+      rewards: {
+        experience: rewardExperience,
+        credits: 0,
+      },
+      profile: updatedProfile,
+    };
+  }
 }

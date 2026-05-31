@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { EquipItemDto } from './dto/equip-item.dto';
+import { RecordSoloMatchResultDto } from './dto/record-solo-match-result.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { Role } from '@prisma/client';
 import { LoggerService } from '../../common/logger/logger.service';
@@ -66,5 +67,14 @@ export class UsersController {
     @Body() dto: EquipItemDto,
   ) {
     return this.usersService.equipItem(req.user.userId, dto.inventoryItemId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('profile/solo-match-result')
+  recordSoloMatchResult(
+    @Req() req: { user: { userId: number; login: string; role: Role } },
+    @Body() dto: RecordSoloMatchResultDto,
+  ) {
+    return this.usersService.recordSoloMatchResult(req.user.userId, dto.result);
   }
 }
