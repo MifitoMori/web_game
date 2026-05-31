@@ -25,6 +25,7 @@ import {
   IconLogout,
   IconMail,
   IconStar,
+  IconTrophy,
   IconSettings,
 } from '@tabler/icons-react';
 import { useAuth } from '@hooks/useAuth';
