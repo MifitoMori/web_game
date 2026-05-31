@@ -1,34 +1,56 @@
 # dependencies
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
+node_modules/
+**/node_modules/
 
-# testing
-/coverage
+# build output
+**/dist/
+**/build/
+**/coverage/
+**/.nyc_output/
 
-# production
-/dist
-/build
+# temp
+**/.temp/
+**/.tmp/
 
-# misc
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
+# logs
+logs/
+*.log
 npm-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
 
 # IDE
+.idea/
 .vscode/*
 !.vscode/extensions.json
-.idea
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# runtime
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# misc
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# reports
+report.*.json
+
+# prisma generated temp output
+**/generated/prisma/
