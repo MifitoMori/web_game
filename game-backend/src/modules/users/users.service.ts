@@ -5,11 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FriendshipStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private readonly SOLO_WIN_EXPERIENCE = 50;
+  private readonly SOLO_LOSS_EXPERIENCE = 25;
 
   private readonly safeUserSelect = {
     id: true,
@@ -29,16 +34,22 @@ export class UsersService {
         totalGames: true,
         wins: true,
         losses: true,
-        draws: true,
-        maxStreak: true,
-        rating: true,
         credits: true,
-        gems: true,
         experience: true,
         level: true,
       },
     },
   } as const;
+
+  private calculateLevel(experience: number) {
+    let level = 1;
+
+    while (experience >= (level + 1) * 250) {
+      level += 1;
+    }
+
+    return level;
+  }
 
   findByLogin(login: string) {
     return this.prisma.user.findUnique({
@@ -73,6 +84,22 @@ export class UsersService {
         profile: {
           create: {},
         },
+        inventoryItems: {
+          create: [
+            {
+              catalogItem: {
+                connect: { slug: 'hitman-skin' },
+              },
+              isEquipped: true,
+            },
+            {
+              catalogItem: {
+                connect: { slug: 'newcomer-title' },
+              },
+              isEquipped: true,
+            },
+          ],
+        },
       },
       select: this.safeUserSelect,
     });
@@ -88,6 +115,73 @@ export class UsersService {
   async getSafeById(id: number) {
     return this.prisma.user.findUnique({
       where: { id },
+      select: this.safeUserSelect,
+    });
+  }
+
+  async updateSettings(userId: number, dto: UpdateSettingsDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        login: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    const nextLogin = dto.login?.trim();
+    const nextAvatarUrl = dto.avatarUrl?.trim();
+    const data: {
+      login?: string;
+      avatarUrl?: string | null;
+      passwordHash?: string;
+    } = {};
+
+    if (nextLogin && nextLogin !== user.login) {
+      const existingUser = await this.prisma.user.findUnique({
+        where: { login: nextLogin },
+        select: { id: true },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        throw new BadRequestException('Этот login уже используется');
+      }
+
+      data.login = nextLogin;
+    }
+
+    if (dto.avatarUrl !== undefined) {
+      data.avatarUrl = nextAvatarUrl || null;
+    }
+
+    if (dto.newPassword) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException('Введите текущий пароль');
+      }
+
+      const isCurrentPasswordValid = await bcrypt.compare(
+        dto.currentPassword,
+        user.passwordHash,
+      );
+
+      if (!isCurrentPasswordValid) {
+        throw new BadRequestException('Текущий пароль указан неверно');
+      }
+
+      data.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return this.getSafeById(userId);
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
       select: this.safeUserSelect,
     });
   }
@@ -108,16 +202,19 @@ export class UsersService {
             totalGames: true,
             wins: true,
             losses: true,
-            draws: true,
-            maxStreak: true,
-            rating: true,
             credits: true,
-            gems: true,
             experience: true,
             level: true,
           },
         },
         inventoryItems: {
+          where: {
+            catalogItem: {
+              type: {
+                in: ['skin', 'title'],
+              },
+            },
+          },
           orderBy: {
             receivedAt: 'desc',
           },
@@ -204,10 +301,23 @@ export class UsersService {
             totalGames: true,
             wins: true,
             losses: true,
-            draws: true,
-            maxStreak: true,
-            rating: true,
             level: true,
+          },
+        },
+        inventoryItems: {
+          where: {
+            isEquipped: true,
+            catalogItem: {
+              type: 'title',
+            },
+          },
+          take: 1,
+          select: {
+            catalogItem: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
@@ -226,7 +336,10 @@ export class UsersService {
         avatarUrl: user.avatarUrl,
         createdAt: user.createdAt,
       },
-      profile: user.profile,
+      profile: {
+        ...user.profile,
+        title: user.inventoryItems[0]?.catalogItem.name,
+      },
     };
   }
 
@@ -278,26 +391,54 @@ export class UsersService {
     });
   }
 
-  async unequipItem(userId: number, type: 'skin' | 'trail' | 'effect' | 'title') {
-    const updatedItems = await this.prisma.inventoryItem.updateMany({
-      where: {
-        userId,
-        catalogItem: {
-          type,
+  async recordSoloMatchResult(userId: number, result: 'victory' | 'defeat') {
+    const rewardExperience =
+      result === 'victory' ? this.SOLO_WIN_EXPERIENCE : this.SOLO_LOSS_EXPERIENCE;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        profileId: true,
+        profile: {
+          select: {
+            experience: true,
+          },
         },
-        isEquipped: true,
-      },
-      data: {
-        isEquipped: false,
       },
     });
 
-    if (updatedItems.count === 0) {
-      throw new BadRequestException('В этом слоте нет экипированного предмета');
+    if (!user?.profile) {
+      throw new NotFoundException('Профиль пользователя не найден');
     }
+
+    const nextExperience = user.profile.experience + rewardExperience;
+    const updatedProfile = await this.prisma.profile.update({
+      where: { id: user.profileId },
+      data: {
+        totalGames: { increment: 1 },
+        wins: result === 'victory' ? { increment: 1 } : undefined,
+        losses: result === 'defeat' ? { increment: 1 } : undefined,
+        experience: { increment: rewardExperience },
+        level: this.calculateLevel(nextExperience),
+      },
+      select: {
+        totalGames: true,
+        wins: true,
+        losses: true,
+        credits: true,
+        experience: true,
+        level: true,
+      },
+    });
 
     return {
       success: true,
+      result,
+      rewards: {
+        experience: rewardExperience,
+        credits: 0,
+      },
+      profile: updatedProfile,
     };
   }
 }

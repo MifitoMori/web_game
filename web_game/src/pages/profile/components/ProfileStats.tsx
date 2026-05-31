@@ -1,9 +1,7 @@
 import React from 'react';
 import { Grid, Group, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
 import {
-  IconFlame,
   IconScoreboard,
-  IconShield,
   IconSword,
   IconTrendingUp,
   IconTrophy,
@@ -20,9 +18,7 @@ const ProfileStats: React.FC<ProfileStatsProps> = ({ stats }) => {
     { title: 'Всего игр', value: stats.totalGames, icon: IconScoreboard, color: 'blue' },
     { title: 'Победы', value: stats.wins, icon: IconTrophy, color: 'green' },
     { title: 'Поражения', value: stats.losses, icon: IconSword, color: 'red' },
-    { title: 'Ничьи', value: stats.draws, icon: IconShield, color: 'yellow' },
     { title: 'Win Rate', value: `${stats.winRate}%`, icon: IconTrendingUp, color: 'cyan' },
-    { title: 'Макс. стрик', value: stats.longestWinStreak, icon: IconFlame, color: 'orange' },
   ];
 
   return (

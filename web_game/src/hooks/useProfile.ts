@@ -8,11 +8,7 @@ type BackendProfile = {
   totalGames: number;
   wins: number;
   losses: number;
-  draws: number;
-  maxStreak: number;
-  rating: number;
   credits: number;
-  gems: number;
   experience: number;
   level: number;
 };
@@ -23,7 +19,7 @@ type BackendInventoryItem = {
   name: string;
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  type: 'skin' | 'trail' | 'effect' | 'title';
+  type: 'skin' | 'title';
   equipped: boolean;
   unlocked: boolean;
 };
@@ -62,30 +58,6 @@ const extractErrorMessage = async (response: Response) => {
 
 const getNextLevelExp = (level: number) => Math.max(level * 250, 250);
 
-const getRank = (rating: number) => {
-  if (rating >= 2500) {
-    return 'Легенда';
-  }
-
-  if (rating >= 1800) {
-    return 'Алмаз';
-  }
-
-  if (rating >= 1200) {
-    return 'Платина';
-  }
-
-  if (rating >= 800) {
-    return 'Золото';
-  }
-
-  if (rating >= 400) {
-    return 'Серебро';
-  }
-
-  return 'Бронза';
-};
-
 const buildStats = (profile: BackendProfile): GameStats => {
   const winRate = profile.totalGames > 0 ? (profile.wins / profile.totalGames) * 100 : 0;
 
@@ -93,19 +65,12 @@ const buildStats = (profile: BackendProfile): GameStats => {
     totalGames: profile.totalGames,
     wins: profile.wins,
     losses: profile.losses,
-    draws: profile.draws,
     winRate: Number(winRate.toFixed(1)),
-    longestWinStreak: profile.maxStreak,
-    totalScore: profile.rating,
-    averageScore:
-      profile.totalGames > 0 ? Number((profile.rating / profile.totalGames).toFixed(1)) : 0,
   };
 };
 
 const buildLoadout = (inventory: InventoryItem[]): Loadout => ({
   skin: inventory.find((item) => item.type === 'skin' && item.equipped),
-  trail: inventory.find((item) => item.type === 'trail' && item.equipped),
-  effect: inventory.find((item) => item.type === 'effect' && item.equipped),
   title: inventory.find((item) => item.type === 'title' && item.equipped),
 });
 
@@ -132,8 +97,6 @@ const mapProfileData = (payload: BackendProfileResponse): ProfileData => {
     experience: payload.profile.experience,
     nextLevelExp: getNextLevelExp(payload.profile.level + 1),
     credits: payload.profile.credits,
-    gems: payload.profile.gems,
-    rank: getRank(payload.profile.rating),
     joinDate: new Date(payload.user.createdAt),
   };
 
@@ -149,7 +112,6 @@ export const useProfile = () => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [credits, setCredits] = useState(0);
-  const [gems, setGems] = useState(0);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isProfileReady, setIsProfileReady] = useState(false);
 
@@ -170,7 +132,6 @@ export const useProfile = () => {
 
       setProfileData(mappedProfile);
       setCredits(mappedProfile.profile.credits);
-      setGems(mappedProfile.profile.gems);
       setInventory(mappedProfile.inventory);
       setIsProfileReady(true);
 
@@ -225,40 +186,6 @@ export const useProfile = () => {
     }
   };
 
-  const unequipItem = async (itemType: string) => {
-    try {
-      const response = await apiFetch(getApiUrl('/api/profile/unequip'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ type: itemType }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await extractErrorMessage(response));
-      }
-
-      await loadProfile(false);
-
-      notifications.show({
-        title: 'Предмет снят',
-        message: 'Предмет убран из снаряжения',
-        color: 'blue',
-      });
-
-      return true;
-    } catch (error) {
-      notifications.show({
-        title: 'Ошибка',
-        message: error instanceof Error ? error.message : 'Не удалось снять предмет',
-        color: 'red',
-      });
-
-      return false;
-    }
-  };
-
   const purchaseItem = async (shopItem: ShopItem): Promise<boolean> => {
     try {
       const slug = 'slug' in shopItem && typeof shopItem.slug === 'string' ? shopItem.slug : null;
@@ -284,7 +211,6 @@ export const useProfile = () => {
       await loadProfile(false);
 
       setCredits(purchaseResult.balances.credits);
-      setGems(purchaseResult.balances.gems);
 
       notifications.show({
         title: 'Покупка совершена!',
@@ -309,10 +235,9 @@ export const useProfile = () => {
     isLoading,
     isProfileReady,
     credits,
-    gems,
     inventory,
+    loadProfile,
     equipItem,
-    unequipItem,
     purchaseItem,
   };
 };

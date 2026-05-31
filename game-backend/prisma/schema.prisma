@@ -58,11 +58,7 @@ model Profile {
   totalGames Int @default(0)
   wins       Int @default(0)
   losses     Int @default(0)
-  draws      Int @default(0)
-  maxStreak  Int @default(0)
-  rating     Int @default(0)
   credits    Int @default(0)
-  gems       Int @default(0)
   experience Int @default(0)
   level      Int @default(1)
 

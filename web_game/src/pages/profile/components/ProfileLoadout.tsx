@@ -1,6 +1,6 @@
 import React from 'react';
 import { Badge, Group, Paper, Stack, Text, ThemeIcon, Title } from '@mantine/core';
-import { IconBolt, IconCrown, IconCube, IconSparkles } from '@tabler/icons-react';
+import { IconCrown, IconCube } from '@tabler/icons-react';
 import type { Loadout } from '@app-types/profile';
 import classes from './ProfileLoadout.module.css';
 
@@ -8,11 +8,39 @@ interface ProfileLoadoutProps {
   loadout: Loadout;
 }
 
+const getRarityLabel = (rarity: string) => {
+  switch (rarity) {
+    case 'common':
+      return 'Обычный';
+    case 'rare':
+      return 'Редкий';
+    case 'epic':
+      return 'Эпический';
+    case 'legendary':
+      return 'Легендарный';
+    default:
+      return rarity;
+  }
+};
+
+const getRarityColor = (rarity: string) => {
+  switch (rarity) {
+    case 'common':
+      return 'gray';
+    case 'rare':
+      return 'blue';
+    case 'epic':
+      return 'purple';
+    case 'legendary':
+      return 'yellow';
+    default:
+      return 'gray';
+  }
+};
+
 const ProfileLoadout: React.FC<ProfileLoadoutProps> = ({ loadout }) => {
   const loadoutItems = [
     { type: 'skin', label: 'Скин', icon: IconCube, item: loadout.skin },
-    { type: 'trail', label: 'След', icon: IconSparkles, item: loadout.trail },
-    { type: 'effect', label: 'Эффект', icon: IconBolt, item: loadout.effect },
     { type: 'title', label: 'Титул', icon: IconCrown, item: loadout.title },
   ];
 
@@ -37,26 +65,8 @@ const ProfileLoadout: React.FC<ProfileLoadoutProps> = ({ loadout }) => {
             {item ? (
               <Group gap="xs">
                 <Text size="sm">{item.name}</Text>
-                <Badge
-                  size="xs"
-                  variant="light"
-                  color={
-                    item.rarity === 'common'
-                      ? 'gray'
-                      : item.rarity === 'rare'
-                        ? 'blue'
-                        : item.rarity === 'epic'
-                          ? 'purple'
-                          : 'yellow'
-                  }
-                >
-                  {item.rarity === 'common'
-                    ? 'Обычный'
-                    : item.rarity === 'rare'
-                      ? 'Редкий'
-                      : item.rarity === 'epic'
-                        ? 'Эпический'
-                        : 'Легендарный'}
+                <Badge size="xs" variant="light" color={getRarityColor(item.rarity)}>
+                  {getRarityLabel(item.rarity)}
                 </Badge>
               </Group>
             ) : (

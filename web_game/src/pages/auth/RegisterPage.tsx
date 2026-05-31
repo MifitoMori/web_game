@@ -171,31 +171,40 @@ const RegisterPage: React.FC = () => {
         <Stack>
           <TextInput
             label="Имя"
+            name="given-name"
             leftSection={<IconUser size={16} />}
             withAsterisk
+            autoComplete="given-name"
             {...form.getInputProps('firstName')}
           />
 
           <TextInput
             label="Фамилия"
+            name="family-name"
             leftSection={<IconUser size={16} />}
             withAsterisk
             description="Разрешён один дефис"
+            autoComplete="family-name"
             {...form.getInputProps('secondName')}
           />
 
           <TextInput
             label="Логин"
+            name="username"
             leftSection={<IconUser size={16} />}
             withAsterisk
             description="Минимум 6 символов"
+            autoComplete="username"
             {...form.getInputProps('login')}
           />
 
           <TextInput
             label="Email"
+            type="email"
+            name="email"
             leftSection={<IconMail size={16} />}
             withAsterisk
+            autoComplete="email"
             {...form.getInputProps('email')}
           />
 
@@ -218,8 +227,10 @@ const RegisterPage: React.FC = () => {
                 <PasswordInput
                   label="Пароль"
                   placeholder="Придумайте пароль"
+                  name="new-password"
                   leftSection={<IconLock size={16} />}
                   withAsterisk
+                  autoComplete="new-password"
                   {...form.getInputProps('password')}
                 />
               </div>
@@ -238,16 +249,20 @@ const RegisterPage: React.FC = () => {
           <PasswordInput
             label="Подтверждение пароля"
             placeholder="Повторите пароль"
+            name="confirm-password"
             leftSection={<IconLock size={16} />}
             withAsterisk
+            autoComplete="new-password"
             {...form.getInputProps('confirmPassword')}
           />
 
           <TextInput
             label="Дата рождения"
             type="date"
+            name="bday"
             leftSection={<IconCalendar size={16} />}
             withAsterisk
+            autoComplete="bday"
             {...form.getInputProps('birthDate')}
           />
 

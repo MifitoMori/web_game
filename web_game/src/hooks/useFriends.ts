@@ -11,6 +11,7 @@ import { apiFetch, getApiUrl } from '@services/api';
 type BackendPlayer = {
   id: string;
   nickname: string;
+  title?: string;
   level: number;
   avatar?: string;
 };
@@ -85,6 +86,7 @@ const extractErrorMessage = async (response: Response) => {
 const mapFriend = (friend: BackendFriend): Friend => ({
   id: friend.id,
   nickname: friend.nickname,
+  title: friend.title,
   level: friend.level,
   avatar: friend.avatar,
   friendshipDate: new Date(friend.friendshipDate),

@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -11,7 +12,8 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 import { EquipItemDto } from './dto/equip-item.dto';
-import { UnequipItemDto } from './dto/unequip-item.dto';
+import { RecordSoloMatchResultDto } from './dto/record-solo-match-result.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { Role } from '@prisma/client';
 import { LoggerService } from '../../common/logger/logger.service';
 
@@ -50,6 +52,15 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('profile/settings')
+  updateSettings(
+    @Req() req: { user: { userId: number; login: string; role: Role } },
+    @Body() dto: UpdateSettingsDto,
+  ) {
+    return this.usersService.updateSettings(req.user.userId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('profile/equip')
   equipItem(
     @Req() req: { user: { userId: number; login: string; role: Role } },
@@ -59,11 +70,11 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('profile/unequip')
-  unequipItem(
+  @Post('profile/solo-match-result')
+  recordSoloMatchResult(
     @Req() req: { user: { userId: number; login: string; role: Role } },
-    @Body() dto: UnequipItemDto,
+    @Body() dto: RecordSoloMatchResultDto,
   ) {
-    return this.usersService.unequipItem(req.user.userId, dto.type);
+    return this.usersService.recordSoloMatchResult(req.user.userId, dto.result);
   }
 }

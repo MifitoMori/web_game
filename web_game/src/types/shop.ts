@@ -3,11 +3,11 @@ import type { InventoryItem } from './profile';
 export interface ShopItem {
   id: string | number;
   name: string;
-  type: 'skin' | 'trail' | 'effect' | 'title';
+  type: 'skin' | 'title';
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   price: number;
-  currency: 'gems' | 'credits';
+  currency: 'credits';
   image?: string;
   preview?: string;
 }
@@ -28,7 +28,6 @@ export interface ShopPurchaseResponse {
   };
   balances: {
     credits: number;
-    gems: number;
   };
 }
 

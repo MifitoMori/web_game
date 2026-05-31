@@ -24,6 +24,51 @@
 
 .friendItem {
   transition: background-color 0.2s;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+}
+
+.friendItem > div {
+  width: 100%;
+}
+
+.friendIdentity {
+  flex: 1;
+  min-width: 0;
+}
+
+.friendTitle {
+  max-width: 140px;
+  width: fit-content;
+}
+
+.friendTitle :global(.mantine-Badge-label) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.friendMetaBadge {
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.friendMetaBadge :global(.mantine-Badge-label) {
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.friendMetaGroup {
+  height: 26px;
+  align-items: center;
+}
+
+.friendMetaAction {
+  height: 26px;
+  display: flex;
+  align-items: center;
 }
 
 .openableFriendItem {

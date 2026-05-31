@@ -23,7 +23,6 @@ import {
   IconCheck,
   IconClock,
   IconDotsVertical,
-  IconMessage,
   IconPlayerPlay,
   IconSearch,
   IconTrophy,
@@ -54,6 +53,7 @@ interface FriendsListProps {
   onDeclineRequest: (requestId: number) => Promise<boolean>;
   onCancelRequest: (requestId: number) => Promise<boolean>;
   onRemoveFriend: (friendId: string) => Promise<boolean>;
+  onInviteFriend: (friendId: string) => void;
 }
 
 type PlayerRowProps = {
@@ -75,21 +75,42 @@ const PlayerRow: React.FC<PlayerRowProps> = ({
     p="xs"
     onClick={canOpenProfile ? onOpenProfile : undefined}
   >
-    <Group justify="space-between" wrap="nowrap">
+    <Group justify="space-between" align="center" wrap="nowrap">
       <Group wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
         <Avatar src={player.avatar} size={40} radius="xl" />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <Group justify="space-between" wrap="nowrap">
-            <Text size="sm" fw={500} lineClamp={1}>
-              {player.nickname}
-            </Text>
-            <Badge size="xs" variant="light">
-              LVL {player.level}
-            </Badge>
+        <div className={classes.friendIdentity}>
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Stack gap={3} style={{ flex: 1, minWidth: 0 }}>
+              <Text size="sm" fw={500} lineClamp={1}>
+                {player.nickname}
+              </Text>
+              {player.title && (
+                <Badge
+                  className={classes.friendTitle}
+                  size="xs"
+                  variant="light"
+                  color="grape"
+                >
+                  {player.title}
+                </Badge>
+              )}
+            </Stack>
+            <Group className={classes.friendMetaGroup} gap="xs" align="center" wrap="nowrap">
+              <Badge className={classes.friendMetaBadge} variant="light">
+                LVL {player.level}
+              </Badge>
+              {rightSection && (
+                <div
+                  className={classes.friendMetaAction}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {rightSection}
+                </div>
+              )}
+            </Group>
           </Group>
         </div>
       </Group>
-      {rightSection && <div onClick={(event) => event.stopPropagation()}>{rightSection}</div>}
     </Group>
   </Paper>
 );
@@ -107,8 +128,8 @@ const FriendsList: React.FC<FriendsListProps> = ({
   onDeclineRequest,
   onCancelRequest,
   onRemoveFriend,
+  onInviteFriend,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
   const [isFindModalOpen, setIsFindModalOpen] = useState(false);
   const [activeFriendsTab, setActiveFriendsTab] = useState<string | null>('search');
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -121,10 +142,6 @@ const FriendsList: React.FC<FriendsListProps> = ({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [publicProfile, setPublicProfile] = useState<PublicFriendProfile | null>(null);
-
-  const filteredFriends = friends.filter((friend) =>
-    friend.nickname.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
 
   const handleSearchUsers = async () => {
     const query = userSearchQuery.trim();
@@ -311,7 +328,11 @@ const FriendsList: React.FC<FriendsListProps> = ({
 
   const renderSearchAction = (player: FriendSearchResult) => {
     if (player.relationshipStatus === 'FRIEND') {
-      return <Badge variant="light">В друзьях</Badge>;
+      return (
+        <Badge className={classes.friendMetaBadge} variant="light">
+          В друзьях
+        </Badge>
+      );
     }
 
     if (player.relationshipStatus === 'OUTGOING' && player.requestId) {
@@ -360,14 +381,6 @@ const FriendsList: React.FC<FriendsListProps> = ({
           </Badge>
         )}
 
-        <TextInput
-          placeholder="Поиск друзей..."
-          leftSection={<IconSearch size={16} />}
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.currentTarget.value)}
-          mb="md"
-        />
-
         <ScrollArea className={classes.scrollArea} type="always">
           <Stack gap="xs">
             {isLoading &&
@@ -384,7 +397,7 @@ const FriendsList: React.FC<FriendsListProps> = ({
               ))}
 
             {!isLoading &&
-              filteredFriends.map((friend) => (
+              friends.map((friend) => (
                 <Paper
                   key={friend.id}
                   className={`${classes.friendItem} ${
@@ -398,11 +411,23 @@ const FriendsList: React.FC<FriendsListProps> = ({
                     <Group wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
                       <Avatar src={friend.avatar} size={40} radius="xl" />
 
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className={classes.friendIdentity}>
                         <Group justify="space-between" wrap="nowrap">
-                          <Text size="sm" fw={500} lineClamp={1}>
-                            {friend.nickname}
-                          </Text>
+                          <Stack gap={3} style={{ flex: 1, minWidth: 0 }}>
+                            <Text size="sm" fw={500} lineClamp={1}>
+                              {friend.nickname}
+                            </Text>
+                            {friend.title && (
+                              <Badge
+                                className={classes.friendTitle}
+                                size="xs"
+                                variant="light"
+                                color="grape"
+                              >
+                                {friend.title}
+                              </Badge>
+                            )}
+                          </Stack>
                           <Badge size="xs" variant="light">
                             LVL {friend.level}
                           </Badge>
@@ -418,7 +443,12 @@ const FriendsList: React.FC<FriendsListProps> = ({
                       onMouseLeave={() => setHoveredActionsFriendId(null)}
                     >
                       <Tooltip label="Пригласить в игру">
-                        <ActionIcon variant="light" color="green" size="md">
+                        <ActionIcon
+                          variant="light"
+                          color="green"
+                          size="md"
+                          onClick={() => onInviteFriend(friend.id)}
+                        >
                           <IconPlayerPlay size={18} />
                         </ActionIcon>
                       </Tooltip>
@@ -430,10 +460,6 @@ const FriendsList: React.FC<FriendsListProps> = ({
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
-                          <Menu.Item leftSection={<IconMessage size={14} />}>
-                            Написать сообщение
-                          </Menu.Item>
-                          <Menu.Divider />
                           <Menu.Item
                             color="red"
                             leftSection={<IconUserMinus size={14} />}
@@ -449,7 +475,7 @@ const FriendsList: React.FC<FriendsListProps> = ({
                 </Paper>
               ))}
 
-            {!isLoading && filteredFriends.length === 0 && (
+            {!isLoading && friends.length === 0 && (
               <Text c="dimmed" ta="center" py="xl">
                 Друзья не найдены
               </Text>
@@ -629,7 +655,14 @@ const FriendsList: React.FC<FriendsListProps> = ({
                 {publicProfile.user.login[0]?.toUpperCase()}
               </Avatar>
               <div style={{ minWidth: 0 }}>
-                <Title order={3}>{publicProfile.user.login}</Title>
+                <Group gap="xs" wrap="nowrap">
+                  <Title order={3}>{publicProfile.user.login}</Title>
+                  {publicProfile.profile.title && (
+                    <Badge size="sm" variant="light" color="grape">
+                      {publicProfile.profile.title}
+                    </Badge>
+                  )}
+                </Group>
                 <Text c="dimmed" size="sm">
                   {publicProfile.user.firstName} {publicProfile.user.secondName}
                 </Text>
@@ -651,16 +684,8 @@ const FriendsList: React.FC<FriendsListProps> = ({
                 <Text size="sm">Поражения: {publicProfile.profile.losses}</Text>
               </Group>
               <Group>
-                <IconClock size={18} />
-                <Text size="sm">Ничьи: {publicProfile.profile.draws}</Text>
-              </Group>
-              <Group>
                 <IconPlayerPlay size={18} />
                 <Text size="sm">Всего игр: {publicProfile.profile.totalGames}</Text>
-              </Group>
-              <Group>
-                <IconTrophy size={18} />
-                <Text size="sm">Рейтинг: {publicProfile.profile.rating}</Text>
               </Group>
               <Group>
                 <IconCalendar size={18} />

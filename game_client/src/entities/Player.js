@@ -1,13 +1,18 @@
+import { getSkinTextureKey } from '../config/skins.js?v=20260531-skins-v2';
+
 export default class Player extends Phaser.Physics.Arcade.Image {
-    constructor(scene, x, y) {
-        super(scene, x, y, 'player');
+    constructor(scene, x, y, skinSlug) {
+        super(scene, x, y, getSkinTextureKey(skinSlug));
         
         this.scene = scene;
+        this.skinSlug = skinSlug;
         this.speed = 2;
         this.hp = 100;
         this.maxHp = 100;
         this.ammo = 30;
         this.maxAmmo = 30;
+        this.reserveAmmo = 30;
+        this.maxReserveAmmo = 30;
         this.isReloading = false;
         this.reloadDelay = 2000;
 
@@ -25,8 +30,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this.setScale(1);
         this.body.allowGravity = false;
         
-        this.body.setSize(this.width * 0.7, this.height * 0.7);
-        this.body.setOffset(this.width * 0.15, this.height * 0.15);
+        this.updateBodyBounds();
         
         this.weapon = scene.add.image(x, y, 'weapon');
         this.weapon.setScale(1);
@@ -34,6 +38,23 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         
         this.setupReloadIndicator();
         this.setupDashIndicator();
+    }
+
+    updateBodyBounds() {
+        this.body.setSize(this.width * 0.7, this.height * 0.7);
+        this.body.setOffset(this.width * 0.15, this.height * 0.15);
+    }
+
+    setSkin(skinSlug) {
+        const textureKey = getSkinTextureKey(skinSlug);
+
+        if (this.texture?.key === textureKey) {
+            return;
+        }
+
+        this.skinSlug = skinSlug;
+        this.setTexture(textureKey);
+        this.updateBodyBounds();
     }
     
     setupReloadIndicator() {
@@ -62,7 +83,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         let dashDirY = directionY;
         
         if (dashDirX === 0 && dashDirY === 0) {
-            const angle = this.rotation + 1.6;
+            const angle = this.rotation;
             dashDirX = Math.cos(angle);
             dashDirY = Math.sin(angle);
         } else {
@@ -136,7 +157,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
             this.weapon.x = this.x + Math.cos(angleToPointer) * 20;
             this.weapon.y = this.y + Math.sin(angleToPointer) * 20;
             this.weapon.rotation = angleToPointer;
-            this.rotation = angleToPointer - 1.6;
+            this.rotation = angleToPointer;
             return;
         }
         
@@ -160,7 +181,7 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this.weapon.x = this.x + Math.cos(angleToPointer) * 20;
         this.weapon.y = this.y + Math.sin(angleToPointer) * 20;
         this.weapon.rotation = angleToPointer;
-        this.rotation = angleToPointer - 1.6;
+        this.rotation = angleToPointer;
     }
     
     shoot(pointer, bulletsGroup) {
@@ -203,9 +224,52 @@ export default class Player extends Phaser.Physics.Arcade.Image {
             if (bullet.active) bullet.destroy();
         });
     }
+
+    createConfirmedShot(bulletData, bulletsGroup, ammo, reserveAmmo) {
+        if (typeof ammo === 'number') {
+            this.ammo = ammo;
+        }
+
+        if (typeof reserveAmmo === 'number') {
+            this.reserveAmmo = reserveAmmo;
+        }
+
+        const angle = bulletData.angle;
+        const spawnX = bulletData.x;
+        const spawnY = bulletData.y;
+
+        if (this.scene.effects) {
+            this.scene.effects.muzzleFlash(this.weapon.x, this.weapon.y, angle);
+        }
+
+        const collides = this.scene.physics.overlapRect(spawnX, spawnY, 1, 1)
+            .some(hit => hit.gameObject === this.scene.wallSegments);
+
+        if (collides) return;
+
+        const bullet = bulletsGroup.create(spawnX, spawnY, 'bullet');
+        bullet.owner = 'player';
+        bullet.setScale(1);
+        bullet.body.allowGravity = false;
+        bullet.rotation = angle + 1.6;
+
+        const bulletSpeed = 400;
+        bullet.body.setVelocity(
+            Math.cos(angle) * bulletSpeed,
+            Math.sin(angle) * bulletSpeed
+        );
+
+        if (Math.abs(angle) < 0.9) bullet.body.setSize(15, 7, true);
+        else if(Math.abs(angle) < 2.3) bullet.body.setSize(7, 15, true);
+        else if(Math.abs(angle) < 3.14) bullet.body.setSize(15, 7, true);
+
+        this.scene.time.delayedCall(2000, () => {
+            if (bullet.active) bullet.destroy();
+        });
+    }
     
-    reload() {
-        if (this.isReloading || this.ammo === this.maxAmmo) return;
+    reload(onComplete) {
+        if (this.isReloading || this.ammo === this.maxAmmo || this.reserveAmmo <= 0) return;
         
         this.isReloading = true;
         this.reloadBarBg.setVisible(true);
@@ -229,10 +293,15 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         updateBar();
         
         this.scene.time.delayedCall(this.reloadDelay, () => {
-            this.ammo = this.maxAmmo;
+            const neededAmmo = this.maxAmmo - this.ammo;
+            const loadedAmmo = Math.min(neededAmmo, this.reserveAmmo);
+
+            this.ammo += loadedAmmo;
+            this.reserveAmmo -= loadedAmmo;
             this.isReloading = false;
             this.reloadBarBg.setVisible(false);
             this.reloadBar.setVisible(false);
+            onComplete?.();
         });
     }
     
@@ -248,6 +317,17 @@ export default class Player extends Phaser.Physics.Arcade.Image {
         this.setTint(0xff3333);
         this.scene.time.delayedCall(100, () => this.clearTint());
     }
+
+    setServerHp(hp) {
+        this.hp = Math.max(0, Math.min(this.maxHp, hp));
+
+        if (this.scene.effects) {
+            this.scene.effects.bloodEffect(this.x, this.y);
+        }
+
+        this.setTint(0xff3333);
+        this.scene.time.delayedCall(100, () => this.clearTint());
+    }
     
     heal(amount) {
         this.hp = Math.min(this.maxHp, this.hp + amount);
@@ -257,6 +337,6 @@ export default class Player extends Phaser.Physics.Arcade.Image {
     }
     
     addAmmo(amount) {
-        this.ammo = Math.min(this.maxAmmo, this.ammo + amount);
+        this.reserveAmmo = Math.min(this.maxReserveAmmo, this.reserveAmmo + amount);
     }
 }

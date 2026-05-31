@@ -5,8 +5,7 @@ import {
   IconHome, 
   IconUser, 
   IconShoppingCart, 
-  IconTrophy, 
-  IconSettings, 
+  IconTrophy,
   IconPlayerPlay 
 } from '@tabler/icons-react';
 
@@ -15,7 +14,6 @@ const navItems = [
   { path: '/profile', label: 'Профиль', icon: IconUser },
   { path: '/shop', label: 'Магазин', icon: IconShoppingCart },
   { path: '/leaderboard', label: 'Таблица лидеров', icon: IconTrophy },
-  { path: '/settings', label: 'Настройки', icon: IconSettings },
   { path: '/game', label: 'Игра', icon: IconPlayerPlay },
 ];
 

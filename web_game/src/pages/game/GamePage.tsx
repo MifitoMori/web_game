@@ -1,6 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button, Text, Center, Loader } from '@mantine/core';
+import { apiFetch, getApiUrl } from '@services/api';
+
+const ACTIVE_MATCH_STORAGE_KEY = 'activeMultiplayerMatch';
+
+type GameLocationState = {
+  isMultiplayer?: boolean;
+  roomId?: string;
+  opponent?: any;
+  playerId?: number;
+  playerName?: string;
+  playerTitle?: string;
+  playerSkin?: string;
+  serverIp?: string;
+};
+
+const readStoredMatchState = (): GameLocationState => {
+  try {
+    const rawState = sessionStorage.getItem(ACTIVE_MATCH_STORAGE_KEY);
+    return rawState ? JSON.parse(rawState) : {};
+  } catch {
+    sessionStorage.removeItem(ACTIVE_MATCH_STORAGE_KEY);
+    return {};
+  }
+};
+
+const clearStoredMatchState = () => {
+  sessionStorage.removeItem(ACTIVE_MATCH_STORAGE_KEY);
+};
+
+const SOLO_REWARD_TEXT: Record<'victory' | 'defeat', string> = {
+  victory: '+50 опыта',
+  defeat: '+25 опыта',
+};
+
+const MULTIPLAYER_REWARD_TEXT: Record<'victory' | 'defeat', string> = {
+  victory: '+100 опыта и 50 кредитов',
+  defeat: '+25 опыта и 10 кредитов',
+};
+
+const isGameResult = (result: unknown): result is 'victory' | 'defeat' =>
+  result === 'victory' || result === 'defeat';
 
 // Сервис для определения IP
 class NetworkService {
@@ -15,18 +56,10 @@ class NetworkService {
   }
 
   async getServerIp(): Promise<string> {
-    try {
-      const response = await fetch('/api/network/ip', {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      this.serverIp = data.ip || 'localhost';
-      console.log('Server IP detected:', this.serverIp);
-      return this.serverIp;
-    } catch (error) {
-      console.warn('Failed to detect server IP, using localhost');
-      return 'localhost';
-    }
+    // Подключаемся к тому же хосту, на котором открыта страница,
+    // чтобы cookie с токеном совпадала с адресом сокета.
+    this.serverIp = window.location.hostname || 'localhost';
+    return this.serverIp;
   }
 
   async getGameUrl(): Promise<string> {
@@ -36,6 +69,7 @@ class NetworkService {
 }
 
 const GamePage: React.FC = () => {
+  const gameClientVersion = '20260531-skins-v2';
   const navigate = useNavigate();
   const location = useLocation();
   const [showExitModal, setShowExitModal] = useState(false);
@@ -45,16 +79,39 @@ const GamePage: React.FC = () => {
   const [gameUrl, setGameUrl] = useState<string>('http://localhost:8080');
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const soloResultSavedRef = useRef(false);
 
   // Получаем параметры из location state
-  const locationState = location.state as {
-    isMultiplayer?: boolean;
-    roomId?: string;
-    opponent?: any;
-    playerId?: number;
-    playerName?: string;
-    serverIp?: string;
-  } || {};
+  const routeState = (location.state as GameLocationState | null) || {};
+  const storedMatchState = readStoredMatchState();
+  const locationState: GameLocationState =
+    routeState.roomId || routeState.isMultiplayer !== undefined
+      ? routeState
+      : storedMatchState;
+  const isMultiplayerGame = locationState.isMultiplayer === true;
+  const getRewardText = (result: 'victory' | 'defeat') =>
+    isMultiplayerGame ? MULTIPLAYER_REWARD_TEXT[result] : SOLO_REWARD_TEXT[result];
+
+  const saveSoloMatchResult = async (result: 'victory' | 'defeat') => {
+    if (soloResultSavedRef.current) {
+      return;
+    }
+
+    soloResultSavedRef.current = true;
+
+    const response = await apiFetch(getApiUrl('/api/profile/solo-match-result'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ result }),
+    });
+
+    if (!response.ok) {
+      soloResultSavedRef.current = false;
+      throw new Error(await response.text());
+    }
+  };
 
   // Определяем URL игры при загрузке компонента
   useEffect(() => {
@@ -80,6 +137,7 @@ const GamePage: React.FC = () => {
   const getIframeSrc = () => {
     const baseUrl = gameUrl;
     const params = new URLSearchParams();
+    params.set('clientVersion', gameClientVersion);
     
     if (locationState.isMultiplayer !== undefined) {
       params.set('multiplayer', String(locationState.isMultiplayer));
@@ -91,7 +149,13 @@ const GamePage: React.FC = () => {
       params.set('playerId', String(locationState.playerId));
     }
     if (locationState.playerName) {
-      params.set('playerName', encodeURIComponent(locationState.playerName));
+      params.set('playerName', locationState.playerName);
+    }
+    if (locationState.playerTitle) {
+      params.set('playerTitle', locationState.playerTitle);
+    }
+    if (locationState.playerSkin) {
+      params.set('playerSkin', locationState.playerSkin);
     }
     if (locationState.serverIp) {
       params.set('server', locationState.serverIp);
@@ -102,7 +166,7 @@ const GamePage: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (!gameUrl || !event.origin) return;
       
       try {
@@ -115,7 +179,22 @@ const GamePage: React.FC = () => {
       const { type, data } = event.data || {};
       
       if (type === 'GAME_END') {
-        setGameResult(data?.result);
+        const result = data?.result;
+
+        clearStoredMatchState();
+
+        if (isGameResult(result)) {
+          if (!isMultiplayerGame) {
+            try {
+              await saveSoloMatchResult(result);
+            } catch (error) {
+              console.error('Failed to save solo match result:', error);
+            }
+          }
+
+          setGameResult(result);
+        }
+
         setShowExitModal(true);
       }
       
@@ -126,27 +205,31 @@ const GamePage: React.FC = () => {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [gameUrl]);
+  }, [gameUrl, isMultiplayerGame]);
 
   const handleExit = () => {
+    clearStoredMatchState();
     setShowExitModal(false);
-    navigate('/lobby');
-  };
 
-  const handleRestart = () => {
-    setGameResult(null);
-    setShowExitModal(false);
-    if (iframeRef.current) {
-      iframeRef.current.src = getIframeSrc();
+    if (!gameResult && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({
+        type: 'LEAVE_GAME'
+      }, gameUrl);
+      window.setTimeout(() => navigate('/lobby'), 250);
+      return;
     }
+
+    navigate('/lobby');
   };
 
   const handleResumeGame = () => {
     setShowExitModal(false);
     if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.focus();
       iframeRef.current.contentWindow.postMessage({
         type: 'RESUME_GAME'
       }, gameUrl);
+      window.setTimeout(() => iframeRef.current?.focus(), 0);
     }
   };
 
@@ -169,7 +252,7 @@ const GamePage: React.FC = () => {
           <Button onClick={handleRetry} variant="light">
             Попробовать снова
           </Button>
-          <Button onClick={() => navigate('/lobby')} variant="subtle">
+          <Button onClick={handleExit} variant="subtle">
             Вернуться в лобби
           </Button>
         </div>
@@ -178,7 +261,7 @@ const GamePage: React.FC = () => {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100vh', overflow: 'hidden', background: '#1f181e' }}>
       {isLoading && (
         <Center style={{ 
           position: 'absolute', 
@@ -202,6 +285,7 @@ const GamePage: React.FC = () => {
           border: 'none',
           display: isLoading ? 'none' : 'block',
           pointerEvents: 'auto',
+          background: '#1f181e',
         }}
         title="Game"
         allow="fullscreen"
@@ -271,23 +355,13 @@ const GamePage: React.FC = () => {
                     : 'Вы были повержены. Попробуйте снова!'}
                 </Text>
                 <Text size="sm" style={{ marginBottom: '30px', color: '#888' }}>
-                  {gameResult === 'victory' 
-                    ? '+100 опыта и 50 кредитов' 
-                    : '+10 опыта за участие'}
+                  {getRewardText(gameResult)}
                 </Text>
                 <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
                   <Button 
-                    onClick={handleRestart} 
-                    color="blue" 
-                    size="lg"
-                  >
-                    Играть снова
-                  </Button>
-                  <Button 
                     onClick={handleExit} 
-                    variant="subtle" 
+                    color="blue"
                     size="lg"
-                    color="gray"
                   >
                     Выйти в лобби
                   </Button>

@@ -17,15 +17,11 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  IconBolt,
   IconCategory,
-  IconCheck,
   IconCoin,
   IconCrown,
   IconCube,
-  IconDiamond,
   IconShoppingCart,
-  IconSparkles,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import type { ShopCatalogItem, ShopCategory, ShopItem } from '@app-types/shop';
@@ -34,20 +30,17 @@ import classes from './Shop.module.css';
 
 interface ShopProps {
   credits: number;
-  gems: number;
   onPurchase: (item: ShopItem) => Promise<boolean>;
 }
 
 const categoryNames: Record<ShopCatalogItem['type'], string> = {
   skin: 'Скины',
-  trail: 'Следы',
-  effect: 'Эффекты',
   title: 'Титулы',
 };
 
-const categoryOrder: ShopCatalogItem['type'][] = ['skin', 'trail', 'effect', 'title'];
+const categoryOrder: ShopCatalogItem['type'][] = ['skin', 'title'];
 
-const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
+const Shop: React.FC<ShopProps> = ({ credits, onPurchase }) => {
   const [opened, { open, close }] = useDisclosure(false);
   const [selectedItem, setSelectedItem] = useState<ShopCatalogItem | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -132,10 +125,6 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
     switch (type) {
       case 'skin':
         return <IconCube size={20} />;
-      case 'trail':
-        return <IconSparkles size={20} />;
-      case 'effect':
-        return <IconBolt size={20} />;
       case 'title':
         return <IconCrown size={20} />;
       default:
@@ -147,10 +136,6 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
     switch (type) {
       case 'skin':
         return 'Скин';
-      case 'trail':
-        return 'След';
-      case 'effect':
-        return 'Эффект';
       case 'title':
         return 'Титул';
       default:
@@ -158,8 +143,7 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
     }
   };
 
-  const canAfford = (item: ShopItem) =>
-    item.currency === 'credits' ? credits >= item.price : gems >= item.price;
+  const canAfford = (item: ShopItem) => credits >= item.price;
 
   const handlePurchase = (item: ShopCatalogItem) => {
     setSelectedItem(item);
@@ -182,12 +166,6 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
           ),
         );
 
-        notifications.show({
-          title: 'Покупка совершена!',
-          message: `Вы приобрели ${selectedItem.name}`,
-          color: 'green',
-          icon: <IconCheck size={16} />,
-        });
       }
 
       setSelectedItem(null);
@@ -237,15 +215,6 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
               <Text fw={700}>{credits.toLocaleString()}</Text>
               <Text size="xs" c="dimmed">
                 кредит(ов)
-              </Text>
-            </Group>
-          </Paper>
-          <Paper className={classes.balanceItem} withBorder p="xs">
-            <Group gap="xs">
-              <IconDiamond size={20} color="cyan" />
-              <Text fw={700}>{gems.toLocaleString()}</Text>
-              <Text size="xs" c="dimmed">
-                гем(ов)
               </Text>
             </Group>
           </Paper>
@@ -326,17 +295,11 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
                                   <Button
                                     variant={affordable ? 'gradient' : 'light'}
                                     gradient={{ from: 'orange', to: 'red' }}
-                                    leftSection={
-                                      item.currency === 'credits' ? (
-                                        <IconCoin size={16} />
-                                      ) : (
-                                        <IconDiamond size={16} />
-                                      )
-                                    }
+                                    leftSection={<IconCoin size={16} />}
                                     onClick={() => handlePurchase(item)}
                                     disabled={!affordable}
                                   >
-                                    {item.price} {item.currency === 'credits' ? 'кредит(ов)' : 'гем(ов)'}
+                                    {item.price} кредит(ов)
                                   </Button>
                                 </Tooltip>
                               )}
@@ -378,14 +341,10 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
             <Group justify="space-between" mb="sm">
               <Text size="sm">Цена:</Text>
               <Group gap="xs">
-                {selectedItem.currency === 'credits' ? (
-                  <IconCoin size={16} color="gold" />
-                ) : (
-                  <IconDiamond size={16} color="cyan" />
-                )}
+                <IconCoin size={16} color="gold" />
                 <Text fw={700}>{selectedItem.price.toLocaleString()}</Text>
                 <Text size="xs" c="dimmed">
-                  {selectedItem.currency === 'credits' ? 'кредит(ов)' : 'гем(ов)'}
+                  кредит(ов)
                 </Text>
               </Group>
             </Group>
@@ -393,16 +352,8 @@ const Shop: React.FC<ShopProps> = ({ credits, gems, onPurchase }) => {
             <Group justify="space-between">
               <Text size="sm">Ваш баланс:</Text>
               <Group gap="xs">
-                {selectedItem.currency === 'credits' ? (
-                  <IconCoin size={16} color="gold" />
-                ) : (
-                  <IconDiamond size={16} color="cyan" />
-                )}
-                <Text fw={700}>
-                  {selectedItem.currency === 'credits'
-                    ? credits.toLocaleString()
-                    : gems.toLocaleString()}
-                </Text>
+                <IconCoin size={16} color="gold" />
+                <Text fw={700}>{credits.toLocaleString()}</Text>
               </Group>
             </Group>
 

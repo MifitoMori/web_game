@@ -4,7 +4,6 @@ export const ROUTES = {
   PROFILE: '/profile',
   SHOP: '/shop',
   LEADERBOARD: '/leaderboard',
-  SETTINGS: '/settings',
   GAME: '/game',
   ADMIN: '/admin',
 } as const;
@@ -17,7 +16,6 @@ export const PROTECTED_ROUTES = [
   ROUTES.PROFILE,
   ROUTES.SHOP,
   ROUTES.LEADERBOARD,
-  ROUTES.SETTINGS,
   ROUTES.GAME,
   ROUTES.ADMIN,
 ];

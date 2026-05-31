@@ -10,24 +10,10 @@ export class NetworkService {
   }
 
     async getServerIp(): Promise<string> {
-    // Уже есть сохраненный IP
-    if (this.serverIp !== null) {
-      return this.serverIp;
-    }
-
-    try {
-      const response = await fetch('/api/network/ip', {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      const detectedIp = data.ip as string; 
-      this.serverIp = detectedIp;
-      console.log('Server IP detected:', this.serverIp);
-      return detectedIp; 
-    } catch (error) {
-      console.warn('Failed to detect server IP, using localhost');
-      return 'localhost';
-    }
+    // Подключаемся к тому же хосту, на котором открыта страница,
+    // чтобы cookie с токеном совпадала с адресом сокета.
+    this.serverIp = window.location.hostname || 'localhost';
+    return this.serverIp;
   }
 
   getWebSocketUrl(): Promise<string> {

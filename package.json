@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n client,frontend,backend -c red,blue,green \"npm run dev:client\" \"npm --prefix web_game run dev\" \"npm --prefix game-backend run start:dev\"",
-    "dev:client": "npx http-server ./game_client",
+    "dev:client": "npx http-server ./game_client -a 0.0.0.0 -p 8080 -c-1",
     "dev:frontend": "npm --prefix web_game run dev",
     "dev:backend": "npm --prefix game-backend run start:dev",
     "build": "npm --prefix game-backend run build && npm --prefix web_game run build"

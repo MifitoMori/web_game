@@ -13,11 +13,7 @@ type BackendProfile = {
   totalGames: number;
   wins: number;
   losses: number;
-  draws: number;
-  maxStreak: number;
-  rating: number;
   credits: number;
-  gems: number;
   experience: number;
   level: number;
 };
@@ -53,7 +49,6 @@ interface User {
   level?: number;
   experience?: number;
   credits?: number;
-  rank?: string;
   profile?: BackendProfile;
   role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
 }

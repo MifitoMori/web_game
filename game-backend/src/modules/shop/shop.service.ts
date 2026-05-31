@@ -11,6 +11,11 @@ export class ShopService {
 
   async getCatalogForUser(userId: number) {
     const catalogItems = await this.prisma.catalogItem.findMany({
+      where: {
+        type: {
+          in: ['skin', 'title'],
+        },
+      },
       orderBy: { id: 'asc' },
       include: {
         inventoryItems: {
@@ -36,8 +41,13 @@ export class ShopService {
 
   async purchaseItem(userId: number, slug: string) {
     return this.prisma.$transaction(async (tx) => {
-      const catalogItem = await tx.catalogItem.findUnique({
-        where: { slug },
+      const catalogItem = await tx.catalogItem.findFirst({
+        where: {
+          slug,
+          type: {
+            in: ['skin', 'title'],
+          },
+        },
       });
 
       if (!catalogItem) {
@@ -64,7 +74,6 @@ export class ShopService {
           profile: {
             select: {
               credits: true,
-              gems: true,
             },
           },
         },
@@ -74,28 +83,15 @@ export class ShopService {
         throw new NotFoundException('Профиль пользователя не найден');
       }
 
-      const currentBalance =
-        catalogItem.currency === 'credits'
-          ? user.profile.credits
-          : user.profile.gems;
-
-      if (currentBalance < catalogItem.price) {
-        throw new BadRequestException(
-          catalogItem.currency === 'credits'
-            ? 'Недостаточно кредитов'
-            : 'Недостаточно гемов',
-        );
+      if (user.profile.credits < catalogItem.price) {
+        throw new BadRequestException('Недостаточно кредитов');
       }
 
       const updatedProfile = await tx.profile.update({
         where: { id: user.profileId },
-        data:
-          catalogItem.currency === 'credits'
-            ? { credits: { decrement: catalogItem.price } }
-            : { gems: { decrement: catalogItem.price } },
+        data: { credits: { decrement: catalogItem.price } },
         select: {
           credits: true,
-          gems: true,
         },
       });
 

@@ -9,7 +9,7 @@ import {
   Stack,
   Text,
 } from '@mantine/core';
-import { IconShield, IconSword, IconTrophy } from '@tabler/icons-react';
+import { IconSword, IconTrophy } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import type { Player, PlayerStats } from '@app-types/lobby';
 import classes from './PlayerStatus.module.css';
@@ -41,9 +41,16 @@ const PlayerStatus: React.FC<PlayerStatusProps> = ({ player, stats }) => {
           <Stack gap="xs" style={{ flex: 1 }}>
             <Group justify="space-between">
               
-                <Text size="xl" fw={700}>
-                  {player.nickname}
-                </Text>
+                <Group gap="xs">
+                  <Text size="xl" fw={700}>
+                    {player.nickname}
+                  </Text>
+                  {player.title && (
+                    <Badge variant="light" color="grape" size="sm">
+                      {player.title}
+                    </Badge>
+                  )}
+                </Group>
               
 
               <Group gap="xs">
@@ -54,10 +61,6 @@ const PlayerStatus: React.FC<PlayerStatusProps> = ({ player, stats }) => {
                 <Group gap={4}>
                   <IconSword size={16} color="red" />
                   <Text size="sm">{stats.losses}</Text>
-                </Group>
-                <Group gap={4}>
-                  <IconShield size={16} color="blue" />
-                  <Text size="sm">{stats.draws}</Text>
                 </Group>
               </Group>
             </Group>

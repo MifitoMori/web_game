@@ -1,5 +1,5 @@
 export default class HealthPack extends Phaser.Physics.Arcade.Image {
-    constructor(scene, x, y, group) {
+    constructor(scene, x, y, group, options = {}) {
         super(scene, x, y, 'healthPack');
         
         scene.physics.world.enable(this);
@@ -23,8 +23,10 @@ export default class HealthPack extends Phaser.Physics.Arcade.Image {
         });
         
         // Автоуничтожение через 15 секунд
-        scene.time.delayedCall(30000, () => {
-            if (this.active) this.destroy();
-        });
+        if (options.autoDestroy !== false) {
+            scene.time.delayedCall(30000, () => {
+                if (this.active) this.destroy();
+            });
+        }
     }
 }
