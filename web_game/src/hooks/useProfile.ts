@@ -271,6 +271,7 @@ export const useProfile = () => {
     isProfileReady,
     credits,
     inventory,
+    loadProfile,
     equipItem,
     unequipItem,
     purchaseItem,

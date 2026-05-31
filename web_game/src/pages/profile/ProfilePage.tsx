@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDisclosure } from '@mantine/hooks';
 import {
   ActionIcon,
   Avatar,
@@ -31,12 +32,14 @@ import { useProfile } from '@hooks/useProfile';
 import ProfileInventory from './components/ProfileInventory';
 import ProfileLoadout from './components/ProfileLoadout';
 import ProfileStats from './components/ProfileStats';
+import SettingsModal from '@pages/settings/SettingsModal';
 import classes from './ProfilePage.module.css';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
-  const { profileData, isLoading, equipItem, unequipItem } = useProfile();
+  const { profileData, isLoading, loadProfile, equipItem, unequipItem } = useProfile();
+  const [settingsOpened, { open: openSettings, close: closeSettings }] = useDisclosure(false);
 
   if (isLoading) {
     return (
@@ -152,7 +155,7 @@ const ProfilePage: React.FC = () => {
               leftSection={<IconSettings size={20} />}
               fullWidth
               mt="xs"
-              onClick={() => navigate('/settings')}
+              onClick={openSettings}
             >
               Настройки
             </Button>
@@ -182,6 +185,13 @@ const ProfilePage: React.FC = () => {
           </Stack>
         </Grid.Col>
       </Grid>
+
+      <SettingsModal
+        opened={settingsOpened}
+        onClose={closeSettings}
+        profile={profile}
+        onUpdated={() => loadProfile(false)}
+      />
     </Container>
   );
 };

@@ -7,19 +7,14 @@ import {
   Stack,
   Text,
   Anchor,
-  Divider,
-  Group,
   Box,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import {
   IconLock,
-  IconBrandGoogle,
-  IconBrandGithub,
   IconUser,
 } from '@tabler/icons-react';
 import { useAuth } from '@hooks/useAuth';
-import classes from './AuthPage.module.css';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -64,7 +59,9 @@ const LoginPage: React.FC = () => {
             required
             label="Login"
             placeholder="your_login"
+            name="username"
             leftSection={<IconUser size={16} />}
+            autoComplete="username"
             {...form.getInputProps('login')}
           />
 
@@ -72,7 +69,9 @@ const LoginPage: React.FC = () => {
             required
             label="Пароль"
             placeholder="Ваш пароль"
+            name="password"
             leftSection={<IconLock size={16} />}
+            autoComplete="current-password"
             {...form.getInputProps('password')}
           />
 
@@ -82,32 +81,12 @@ const LoginPage: React.FC = () => {
         </Stack>
       </form>
 
-      <Divider label="или" labelPosition="center" my="lg" />
-
-      <Group grow>
-        <Button variant="default" leftSection={<IconBrandGoogle size={16} />}>
-          Google
-        </Button>
-        <Button variant="default" leftSection={<IconBrandGithub size={16} />}>
-          GitHub
-        </Button>
-      </Group>
-
       <Text ta="center" size="sm" mt="md">
         Нет аккаунта?{' '}
         <Anchor component={Link} to="/register" fw={700}>
           Зарегистрироваться
         </Anchor>
       </Text>
-
-      <Box className={classes.demoHint} mt="xl" p="md">
-        <Text size="sm" fw={500} ta="center">
-          Авторизация через backend
-        </Text>
-        <Text size="xs" c="dimmed" ta="center">
-          Используйте существующий login и пароль
-        </Text>
-      </Box>
     </Box>
   );
 };

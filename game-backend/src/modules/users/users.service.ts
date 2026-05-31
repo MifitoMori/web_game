@@ -5,7 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FriendshipStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Injectable()
 export class UsersService {
@@ -84,6 +86,73 @@ export class UsersService {
   async getSafeById(id: number) {
     return this.prisma.user.findUnique({
       where: { id },
+      select: this.safeUserSelect,
+    });
+  }
+
+  async updateSettings(userId: number, dto: UpdateSettingsDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        login: true,
+        passwordHash: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    const nextLogin = dto.login?.trim();
+    const nextAvatarUrl = dto.avatarUrl?.trim();
+    const data: {
+      login?: string;
+      avatarUrl?: string | null;
+      passwordHash?: string;
+    } = {};
+
+    if (nextLogin && nextLogin !== user.login) {
+      const existingUser = await this.prisma.user.findUnique({
+        where: { login: nextLogin },
+        select: { id: true },
+      });
+
+      if (existingUser && existingUser.id !== userId) {
+        throw new BadRequestException('Этот login уже используется');
+      }
+
+      data.login = nextLogin;
+    }
+
+    if (dto.avatarUrl !== undefined) {
+      data.avatarUrl = nextAvatarUrl || null;
+    }
+
+    if (dto.newPassword) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException('Введите текущий пароль');
+      }
+
+      const isCurrentPasswordValid = await bcrypt.compare(
+        dto.currentPassword,
+        user.passwordHash,
+      );
+
+      if (!isCurrentPasswordValid) {
+        throw new BadRequestException('Текущий пароль указан неверно');
+      }
+
+      data.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return this.getSafeById(userId);
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
       select: this.safeUserSelect,
     });
   }

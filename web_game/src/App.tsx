@@ -24,7 +24,6 @@ import RegisterPage from '@pages/auth/RegisterPage';
 import LobbyPage from '@pages/lobby/LobbyPage';
 import ProfilePage from '@pages/profile/ProfilePage';
 import LeaderboardPage from '@pages/leaderboard/LeaderboardPage';
-import SettingsPage from '@pages/settings/SettingsPage';
 import GamePage from '@pages/game/GamePage';
 import AdminPage from '@pages/admin/AdminPage';
 
@@ -130,7 +129,7 @@ function App() {
                 <Route path="/lobby" element={<LobbyPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings" element={<Navigate to="/profile" replace />} />
               </Route>
 
               <Route element={<GameLayout />}>
